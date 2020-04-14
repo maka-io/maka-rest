@@ -1,4 +1,4 @@
-# Restivus [v0.9.0](https://github.com/maka-io/meteor-restivus/blob/devel/CHANGELOG.md#change-log) [![Build Status](https://travis-ci.org/kahmali/meteor-restivus.svg)](https://travis-ci.org/kahmali/meteor-restivus)
+# Restivus [v0.9.1](https://github.com/maka-io/meteor-restivus/blob/devel/CHANGELOG.md#change-log) [![Build Status](https://travis-ci.org/kahmali/meteor-restivus.svg)](https://travis-ci.org/kahmali/meteor-restivus)
 
 #### REST APIs for the Best of Us!
 
@@ -296,6 +296,80 @@ Here's a sample configuration with the complete set of options:
     version: 'v1'
   });
 ```
+
+## Defining Swagger Meta
+Add the swagger object to the Restivus API:
+
+```javascript
+const APIv1 = new Restivus({
+    version: 'v1',
+});
+
+APIv1.swagger = {
+  meta: {
+    swagger: "2.0",
+    info: {
+      version: "1.0.0",
+      title: "My API",
+      description: "My REST API",
+      termsOfService: "https://example.com/terms/",
+      contact: {
+        name: "Example team"
+      },
+      license: {
+        name: "MIT"
+      }
+    }
+  },
+  definitions: {
+    // Schema definitions for $refs, check spec http://swagger.io/specification/
+    // Required for body parameters
+  },
+  params: {
+    // Parameter object definitions to be used in endpoint configurations
+    // Path and body parameter types supported in v0.2.0 
+    petId: {
+      name: "id",
+      in: "path",
+      description: "Pet ID",
+      required: true,
+      type: "string"
+    }
+  },
+  tags: {
+    // Swagger UI tag variables to be used in endpoint grouping
+    pet: "Pets"
+  }
+}
+```
+
+For each endpoint, use the expanded definitions
+```javascript
+APIv1.addRoute('/todo', {
+    get: {
+        action() {
+            return "Find Pets";
+        },
+        swagger: {
+            tags: [ APIv1.swagger.tags.pet ],
+            description: "Returns a pet with ID",
+            parameters: [ APIv1.swagger.params.petId ],
+            responses: {
+                '200': {
+                    description: "Successful pets list"
+                }
+            }
+        }
+    }
+});
+```
+
+Then, simply define where to find the swagger.json:
+
+```javascript
+APIv1.addSwagger('swagger.json'); // resolves to '/api/v1/swagger.json'
+```
+
 
 ## Defining Collection Routes
 
