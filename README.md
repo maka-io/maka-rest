@@ -1,8 +1,8 @@
-# Restivus [v0.8.12](https://github.com/kahmali/meteor-restivus/blob/devel/CHANGELOG.md#change-log) [![Build Status](https://travis-ci.org/kahmali/meteor-restivus.svg)](https://travis-ci.org/kahmali/meteor-restivus)
+# Restivus [v0.9.0](https://github.com/maka-io/meteor-restivus/blob/devel/CHANGELOG.md#change-log) [![Build Status](https://travis-ci.org/kahmali/meteor-restivus.svg)](https://travis-ci.org/kahmali/meteor-restivus)
 
 #### REST APIs for the Best of Us!
 
-Restivus makes building REST APIs in Meteor 0.9.0+ easier than ever before! The package is inspired
+Restivus makes building REST APIs in Meteor 1.10.1+ easier than ever before! The package is inspired
 by [RestStop2][reststop2-docs] and [Collection API](https://github.com/crazytoad/meteor-collectionapi),
 and is built on top of [Simple JSON Routes][json-routes] to provide:
 - A simple interface for creating REST APIs
@@ -76,50 +76,6 @@ You can install Restivus using Meteor's package manager:
 Often, the easiest way to explain something is by example, so here's a short example of what it's
 like to create an API with Restivus (keep scrolling for a JavaScript version):
 
-###### CoffeeScript:
-```coffeescript
-Items = new Mongo.Collection 'items'
-Articles = new Mongo.Collection 'articles'
-
-# Restivus is only available on the server!
-if Meteor.isServer
-
-  # Global API configuration
-  Api = new Restivus
-    useDefaultAuth: true
-    prettyJson: true
-
-  # Generates: GET, POST on /api/items and GET, PUT, PATCH, DELETE on
-  # /api/items/:id for the Items collection
-  Api.addCollection Items
-
-  # Generates: POST on /api/users and GET, DELETE /api/users/:id for
-  # Meteor.users collection
-  Api.addCollection Meteor.users,
-    excludedEndpoints: ['getAll', 'put']
-    routeOptions:
-      authRequired: true
-    endpoints:
-      post:
-        authRequired: false
-      delete:
-        roleRequired: 'admin'
-
-  # Maps to: /api/articles/:id
-  Api.addRoute 'articles/:id', authRequired: true,
-    get: ->
-      Articles.findOne @urlParams.id
-    delete:
-      roleRequired: ['author', 'admin']
-      action: ->
-        if Articles.remove @urlParams.id
-          status: 'success', data: message: 'Article removed'
-        else
-          statusCode: 404
-          body: status: 'fail', message: 'Article not found'
-```
-
-###### JavaScript:
 ```javascript
 Items = new Mongo.Collection('items');
 Articles = new Mongo.Collection('articles');
@@ -314,25 +270,6 @@ Here's a sample configuration with the complete set of options:
 
 **Warning! For demo purposes only - using this configuration is not recommended!**
 
-###### CoffeeScript
-```coffeescript
-  new Restivus
-    apiPath: 'my-api/'
-    auth:
-      token: 'auth.apiKey'
-      user: ->
-        userId: @request.headers['user-id']
-        token: @request.headers['login-token']
-    defaultHeaders:
-      'Content-Type': 'application/json'
-    onLoggedIn: -> console.log "#{@user.username} (#{@userId}) logged in"
-    onLoggedOut: -> console.log "#{@user.username} (#{@userId}) logged out"
-    prettyJson: true
-    useDefaultAuth: true
-    version: 'v1'
-```
-
-###### JavaScript
 ```javascript
   new Restivus({
     apiPath: 'my-api/',
@@ -767,14 +704,6 @@ In this example we have a parameter named `_id`. If we navigate to the `/post/5`
 inside of the GET endpoint function we can get the actual value of the `_id` from
 `this.urlParams._id`. In this case `this.urlParams._id => 5`.
 
-###### CoffeeScript:
-```coffeescript
-# Given a URL like "/post/5"
-Api.addRoute '/post/:_id',
-  get: ->
-    id = @urlParams._id # "5"
-```
-###### JavaScript:
 ```javascript
 // Given a URL "/post/5"
 Api.addRoute('/post/:_id', {
@@ -788,16 +717,6 @@ You can have multiple URL parameters. In this example, we have an `_id` paramete
 parameter. If you navigate to the URL `/post/5/comments/100` then inside your endpoint function
 `this.urlParams._id => 5` and `this.urlParams.commentId => 100`.
 
-###### CoffeeScript:
-```coffeescript
-# Given a URL "/post/5/comments/100"
-Api.addRoute '/post/:_id/comments/:commentId',
-  get: ->
-    id = @urlParams._id # "5"
-    commentId = @urlParams.commentId # "100"
-```
-
-###### JavaScript:
 ```javascript
 // Given a URL "/post/5/comments/100"
 Api.addRoute('/post/:_id/comments/:commentId', {
@@ -810,16 +729,6 @@ Api.addRoute('/post/:_id/comments/:commentId', {
 
 If there is a query string in the URL, you can access that using `this.queryParams`.
 
-###### Coffeescript:
-```coffeescript
-# Given the URL: "/post/5?q=liked#hash_fragment"
-Api.addRoute '/post/:_id',
-  get: ->
-    id = @urlParams._id
-    query = @queryParams # query.q -> "liked"
-```
-
-###### JavaScript:
 ```javascript
 // Given the URL: "/post/5?q=liked#hash_fragment"
 Api.addRoute('/post/:_id', {
@@ -897,26 +806,6 @@ and will get their default values from the route.
   consequence. For more on setting up roles, check out the [`alanning:roles`][alanning-roles]
   package.
 
-###### CoffeeScript
-```coffeescript
-Api.addRoute 'articles', {authRequired: true},
-  get:
-    authRequired: false
-    action: ->
-      # GET api/articles
-  post: ->
-    # POST api/articles
-  put: ->
-    # PUT api/articles
-  patch: ->
-    # PATCH api/articles
-  delete: ->
-    # DELETE api/articles
-  options: ->
-    # OPTIONS api/articles
-```
-
-###### JavaScript
 ```javascript
 Api.addRoute('articles', {authRequired: true}, {
   get: {
@@ -1066,39 +955,6 @@ configuration options. Here's a [good write-up]
 (http://www.troyhunt.com/2014/02/your-api-versioning-is-wrong-which-is.html) on some of the
 different API versioning strategies.
 
-###### CoffeeScript
-```coffeescript
-# Configure first version of the API
-ApiV1 = new Restivus
-  version: 'v1'
-  useDefaultAuth: true
-  prettyJson: true
-
-# Maps to api/v1/items and api/v1/items/:id
-ApiV1.addCollection Items
-  routeOptions: authRequired: true
-
-# Maps to api/v1/custom
-ApiV1.addRoute 'custom',
-  get: ->
-    'get something'
-
-# Configure another version of the API (with a different set of config options if needed)
-ApiV2 = new Restivus
-  version: 'v2'
-  enableCors: false
-
-# Maps to api/v2/items and api/v2/items/:id (with auth requirement removed in this version)
-ApiV2.addCollection Items
-
-# Maps to api/v2/custom (notice the different return value)
-ApiV2.addRoute 'custom',
-  get: ->
-    status: 'success'
-    data: 'get something different'
-```
-
-###### JavaScript
 ```javascript
 // Configure first version of the API
 var ApiV1 = new Restivus({
@@ -1322,52 +1178,3 @@ with that comes a few API-breaking changes:
   on the response structure, which will be demonstrated throughout these docs). Just to be clear,
   this only affects responses that are automatically generated by Restivus. Any responses you
   manually created will remain unaffected.
-
-# Resources
-
-## Plugins
-
-[Restivus Swagger](https://github.com/apinf/restivus-swagger)
-- Define and generate [Swagger 2.0](http://swagger.io/) documentation for Restivus API
-
-## Change Log
-
-A detailed list of the changes between versions can be found in the [change log]
-(https://github.com/kahmali/meteor-restivus/blob/master/CHANGELOG.md).
-
-## Contributing
-
-Contributions to Restivus are welcome and appreciated! If you're interested in contributing, please
-check out [the guidelines](https://github.com/kahmali/meteor-restivus/blob/master/CONTRIBUTING.md)
-before getting started.
-
-## Thanks
-
-Thanks to the developers over at Differential for [RestStop2][], where we got our inspiration for
-this package and stole tons of ideas and code, as well as the Sashko Stubailo from MDG, for his
-work on [`simple:json-routes`][json-routes], including the Restivus conversion from [Iron
-Router][iron-router].
-
-Also, thanks to the following projects, which RestStop2 was inspired by:
-- [gkoberger/meteor-reststop](https://github.com/gkoberger/meteor-reststop)
-- [tmeasday/meteor-router](https://github.com/tmeasday/meteor-router)
-- [crazytoad/meteor-collectionapi](https://github.com/crazytoad/meteor-collectionapi)
-
-## License
-
-MIT License. See [LICENSE](https://github.com/kahmali/meteor-restivus/blob/master/LICENSE) for
-details.
-
-
-[alanning-roles]:       https://github.com/alanning/meteor-roles                                  "Meteor Roles Package"
-[apidoc]:               http://apidocjs.com/                                                      "apiDoc"
-[cors]:                 https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS     "Cross Origin Resource Sharing (CORS)"
-[iron-router]:          https://github.com/iron-meteor/iron-router                                "Iron Router"
-[jsend]:                http://labs.omniti.com/labs/jsend                                         "JSend REST API Standard"
-[json-routes]:          https://github.com/stubailo/meteor-rest/tree/master/packages/json-routes  "Simple JSON Routes"
-[node-request]:         https://nodejs.org/api/http.html#http_http_incomingmessage                 "Node Request Object Docs"
-[node-response]:        https://nodejs.org/api/http.html#http_class_http_serverresponse            "Node Response Object Docs"
-[restivus-change-log]:  https://github.com/kahmali/meteor-restivus/blob/master/CHANGELOG.md       "Restivus Change Log"
-[restivus-issues]:      https://github.com/kahmali/meteor-restivus/issues                         "Restivus Issues"
-[reststop2]:            https://github.com/Differential/reststop2                                 "RestStop2"
-[reststop2-docs]:       http://github.differential.com/reststop2/                                 "RestStop2 Docs"
