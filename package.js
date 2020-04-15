@@ -1,7 +1,7 @@
 Package.describe({
-    name: 'maka:rest',
+    name: 'rest',
     summary: 'Create authenticated REST APIs in Meteor 1.10.1+ via HTTP/HTTPS',
-    version: '0.9.3',
+    version: '0.9.4',
     git: 'https://github.com/maka-io/maka-rest.git'
 });
 
