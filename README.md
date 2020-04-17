@@ -1,4 +1,4 @@
-# Restivus [v0.9.8](https://github.com/maka-io/meteor-restivus/blob/devel/CHANGELOG.md#change-log) [![Build Status](https://travis-ci.org/kahmali/meteor-restivus.svg)](https://travis-ci.org/kahmali/meteor-restivus)
+# Restivus [v0.9.9](https://github.com/maka-io/meteor-restivus/blob/devel/CHANGELOG.md#change-log) [![Build Status](https://travis-ci.org/kahmali/meteor-restivus.svg)](https://travis-ci.org/kahmali/meteor-restivus)
 
 #### REST APIs for the Best of Us!
 
@@ -306,21 +306,19 @@ const APIv1 = new Restivus({
 });
 
 APIv1.swagger = {
-  meta: {
-    swagger: "2.0",
-    info: {
-      version: "1.0.0",
-      title: "My API",
-      description: "My REST API",
-      termsOfService: "https://example.com/terms/",
-      contact: {
-        name: "Example team"
-      },
-      license: {
-        name: "MIT"
-      }
+  swagger: "2.0",
+  info: {
+    version: "1.0.0",
+    title: "My API",
+    description: "My REST API",
+    termsOfService: "https://example.com/terms/",
+    contact: {
+      name: "Example team"
+    },
+    license: {
+      name: "MIT"
     }
-  },
+  }
   definitions: {
     // Schema definitions for $refs, check spec http://swagger.io/specification/
     // Required for body parameters
