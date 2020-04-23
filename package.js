@@ -1,7 +1,7 @@
 Package.describe({
     name: 'maka:rest',
-    summary: 'Create authenticated REST APIs in Meteor 1.10.1+ via HTTP/HTTPS',
-    version: '0.9.9',
+    summary: 'Create authenticated REST APIs in Meteor 1.10.2+ via HTTP/HTTPS',
+    version: '1.0.0',
     git: 'https://github.com/maka-io/maka-rest.git'
 });
 
@@ -11,7 +11,7 @@ Npm.depends({
 
 Package.onUse(function (api) {
   // Minimum Meteor version
-  api.versionsFrom('METEOR@1.10.1');
+  api.versionsFrom('METEOR@1.10.2');
 
   // Meteor dependencies
   api.use('check');
