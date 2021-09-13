@@ -1,4 +1,4 @@
-# Maka-Rest [v1.0.1](https://github.com/maka-io/maka-rest)
+# Maka-Rest
 
 #### REST APIs for the Best of Us!
 
