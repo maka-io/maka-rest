@@ -14,7 +14,7 @@ Npm.depends({
 
 Package.onUse(function (api) {
     // Minimum Meteor version
-    api.versionsFrom(['1.10.2','2.3']);
+    api.versionsFrom(['1.10.2','2.3', '2.6', '2.7']);
 
     // Meteor dependencies
     api.use('check');
