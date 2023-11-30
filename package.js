@@ -6,22 +6,22 @@ Package.describe({
 });
 
 Npm.depends({
-    'url-parse': '1.1.7',
-    '@apidevtools/json-schema-ref-parser': '9.0.1',
+    'url-parse': '1.5.10',
+    '@apidevtools/json-schema-ref-parser': '11.1.0',
     'yamljs': '0.3.0',
-    'limiter': '1.1.5'
+    'limiter': '2.1.0'
 });
 
 Package.onUse(function (api) {
     // Minimum Meteor version
-    api.versionsFrom(['1.10.2','2.3']);
+    api.versionsFrom(['1.10.2','2.3','3.0']);
 
     // Meteor dependencies
     api.use('check');
     api.use('underscore');
     api.use('ecmascript');
     api.use('accounts-password');
-    api.use('simple:json-routes@2.1.0');
+    api.use('simple:json-routes@2.3.1');
 
     //api.addFiles('lib/auth.js', 'server');
     //api.addFiles('lib/route.js', 'server');
