@@ -2,6 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
+import { JsonRoutes } from './json-routes';
 import Codes, { StatusResponse } from './codes';
 import { Request, Response, IncomingMessage } from 'express';
 

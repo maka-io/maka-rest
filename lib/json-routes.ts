@@ -59,7 +59,7 @@ class JsonRoutes {
     if (json !== undefined) {
       const shouldPrettyPrint = process.env.NODE_ENV === 'development';
       res.setHeader('Content-type', 'application/json');
-      res.write(JSON.stringify(json, null, shouldPrettyPrint ? 2 : 0);
+      res.write(JSON.stringify(json, null, shouldPrettyPrint ? 2 : 0));
     }
   }
 
@@ -85,6 +85,7 @@ class JsonRoutes {
   public static processRoutes() {
     WebApp.connectHandlers.use((req: Request, res: Response, next: NextFunction) => {
       JsonRoutes.processRequest(req, res, () => {
+        console.log(this);
         const route = JsonRoutes.matchRoute(req);
         if (route) {
           JsonRoutes.setHeaders(res, JsonRoutes.responseHeaders);
@@ -104,7 +105,5 @@ class JsonRoutes {
     });
   }
 }
-
-JsonRoutes.use(JsonRoutes.processRoutes);
 
 export { JsonRoutes };

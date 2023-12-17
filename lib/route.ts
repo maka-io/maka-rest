@@ -1,13 +1,8 @@
 import { Meteor } from 'meteor/meteor';
 import { Request, Response } from 'express';
-import { JsonRoutes } from 'meteor/simple:json-routes'; // Adjust based on your actual import
+import { JsonRoutes } from './json-routes'; // Adjust based on your actual import
 import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
-
-interface User {
-  _id: string;
-  // ... other properties
-}
 
 interface EndpointContext {
   urlParams: any;
@@ -16,7 +11,7 @@ interface EndpointContext {
   request: Request;
   response: Response;
   done: () => void;
-  user?: User;
+  user?: Meteor.User;
   userId?: string;
 }
 
