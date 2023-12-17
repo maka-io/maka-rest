@@ -24,6 +24,7 @@ Package.onUse(function (api) {
   api.use('underscore');
   api.use('ecmascript');
   api.use('accounts-password');
+  api.use('simple:json-routes@2.3.1');
   api.use('typescript');
   api.use('alanning:roles@3.6.0');
 

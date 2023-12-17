@@ -1,6 +1,6 @@
 import { Meteor } from 'meteor/meteor';
 import { Request, Response } from 'express';
-import { JsonRoutes } from './json-routes'; // Adjust based on your actual import
+import { JsonRoutes } from 'meteor/simple:json-routes';
 import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
 
@@ -127,9 +127,11 @@ class Route {
 
   private async _authenticate(endpointContext: EndpointContext): Promise<{ success: boolean; data?: any }> {
     const auth = this.api._config.auth.user.call(this, endpointContext);
+
     if (!auth || !auth.token) return { success: false };
 
     const userSelector = { [this.api._config.auth.token]: auth.token };
+
     const user = await Meteor.users.findOneAsync(userSelector);
     if (!user) return { success: false };
 

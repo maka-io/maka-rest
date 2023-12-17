@@ -2,7 +2,6 @@ import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
-import { JsonRoutes } from './json-routes';
 import Codes, { StatusResponse } from './codes';
 import { Request, Response, IncomingMessage } from 'express';
 
@@ -75,6 +74,7 @@ class Restivus {
     this.normalizeApiPath();
     this.initializeDefaultAuthEndpoints();
     this.initializeWildcardRoutes();
+
   }
 
   private configureCors(): void {
@@ -195,9 +195,9 @@ class Restivus {
   }
 
   private async _logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {
-    const { user } = incomingMessage;
+    const { user, request } = incomingMessage;
     // Extract the auth token from the request headers
-    const authToken = this.request.headers['x-auth-token'] || this.request.headers['X-Auth-Token'];
+    const authToken = request.headers['x-auth-token'] || this.request.headers['X-Auth-Token'];
     if (!authToken) {
       return Codes.unauthorized401('No auth token provided');
     }
