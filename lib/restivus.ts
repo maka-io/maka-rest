@@ -208,7 +208,7 @@ class Restivus {
     await Meteor.users.updateAsync(user._id, { $pull: { [tokenPath]: { [tokenFieldName]: hashedToken } } });
 
     // Call the logout hook if it's defined
-    const extra = this._config.onLoggedOut?.call(this, req);
+    const extra = this._config.onLoggedOut?.call(this, req, user);
     return extra ? { ...Codes.success200('Logged out successfully'), extra } : Codes.success200('Logged out successfully');
   }
 
@@ -218,7 +218,7 @@ class Restivus {
     const result = await Meteor.users.updateAsync(user._id, { $set: { 'services.resume.loginTokens': [] } });
 
     // Call the logout hook if it's defined
-    const extra = this._config.onLoggedOut?.call(this, req);
+    const extra = this._config.onLoggedOut?.call(this, req, user);
     return extra ? { ...Codes.success200('Logged out from all devices successfully'), extra } : Codes.success200('Logged out from all devices successfully');
   }
 }
