@@ -76,9 +76,6 @@ class Route {
           try {
             const responseData = await this._callEndpoint(endpointContext, endpoint);
             // Add a debug line that logs out the request and response in a structured way
-            console.log('Request and response:')
-            console.log({ request: { url: req.url, params: req.params, query: req.query, body: req.body }, response: { statusCode: responseData.statusCode, headers: responseData.headers, body: responseData.body } });
-
             if (responseData) {
               JsonRoutes.sendResult(res, {
                 code: responseData.statusCode,
