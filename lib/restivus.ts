@@ -2,6 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
+import { JsonRoutes } from './json-routes';
 import Codes, { StatusResponse } from './codes';
 import { Request, Response, IncomingMessage } from 'express';
 
@@ -20,8 +21,8 @@ interface RestivusOptions {
   enableCors: boolean;
   defaultOptionsEndpoint?: () => void;
   onLoginFailure?: (req: Request) => any;
-  onLoggedIn?: (req: Request, user: Meteor.User) => any;
-  onLoggedOut?: (req: Request) => any;
+  onLoggedIn?: (incomingMessage: IncomingMessage) => any;
+  onLoggedOut?: (incomingMessage: IncomingMessage) => any;
 }
 
 interface BodyParams {
@@ -154,27 +155,28 @@ class Restivus {
 
   private _initAuth(): void {
     this.addRoute('login', { authRequired: false }, {
-      post: async (req: Request) => { // Replace with proper types
-        const { bodyParams } = req;
+      post: async (incomingMessage: IncomingMessage) => { // Replace with proper types
+        const { bodyParams, request } = incomingMessage;
 
         const user = this._extractUser(bodyParams) as Meteor.User;
         const auth = await Auth.loginWithPassword(user, this._extractPassword(bodyParams));
         if (auth.userId && auth.authToken) {
-          const searchQuery = { [this._config.auth.token]: await Accounts._hashLoginToken(auth.authToken) };
+          const searchQuery = { [this._config.auth.token]: Accounts._hashLoginToken(auth.authToken) };
           const user = await Meteor.users.findOneAsync({ '_id': auth.userId }, searchQuery);
           if (!user) {
-            const extra = this._config.onLoginFailure?.call(this, req);
+            const extra = this._config.onLoginFailure?.call(this, incomingMessage);
             return Codes.badRequest400({ message: 'Error attempting login', ...extra })
           }
-          const extra = this._config.onLoggedIn?.call(this, req, user);
+          Object.assign(incomingMessage, { user });
+          const extra = this._config.onLoggedIn?.call(this, incomingMessage);
           return extra ? { ...Codes.success200(auth), extra } : Codes.success200(auth);
         }
         return Codes.badRequest400('Error attempting login');
       }
     });
 
-    this.addRoute('logout', { authRequired: true }, { post: async (req: Request) => await this._logout(req) });
-    this.addRoute('logoutAll', { authRequired: true }, { post: async (req: Request) => await this._logoutAll(req) });
+    this.addRoute('logout', { authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logout(incomingMessage) });
+    this.addRoute('logoutAll', { authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logoutAll(incomingMessage) });
   }
 
   private _extractUser(body: BodyParams): Partial<Meteor.User> {
@@ -192,8 +194,8 @@ class Restivus {
     return body.hashed ? { digest: body.password, algorithm: 'sha-256' } : body.password;
   }
 
-  private async _logout(req: Request): Promise<StatusResponse> {
-    const { user } = req;
+  private async _logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {
+    const { user } = incomingMessage;
     // Extract the auth token from the request headers
     const authToken = this.request.headers['x-auth-token'] || this.request.headers['X-Auth-Token'];
     if (!authToken) {
@@ -208,17 +210,17 @@ class Restivus {
     await Meteor.users.updateAsync(user._id, { $pull: { [tokenPath]: { [tokenFieldName]: hashedToken } } });
 
     // Call the logout hook if it's defined
-    const extra = this._config.onLoggedOut?.call(this, req, user);
+    const extra = this._config.onLoggedOut?.call(this, incomingMessage);
     return extra ? { ...Codes.success200('Logged out successfully'), extra } : Codes.success200('Logged out successfully');
   }
 
-  private async _logoutAll(req: Request): Promise<StatusResponse> {
-    const { user } = req;
+  private async _logoutAll(incomingMessage: IncomingMessage): Promise<StatusResponse> {
+    const { user } = incomingMessage;
     // Clear all tokens from the user's account
-    const result = await Meteor.users.updateAsync(user._id, { $set: { 'services.resume.loginTokens': [] } });
+    await Meteor.users.updateAsync(user._id, { $set: { 'services.resume.loginTokens': [] } });
 
     // Call the logout hook if it's defined
-    const extra = this._config.onLoggedOut?.call(this, req, user);
+    const extra = this._config.onLoggedOut?.call(this, incomingMessage);
     return extra ? { ...Codes.success200('Logged out from all devices successfully'), extra } : Codes.success200('Logged out from all devices successfully');
   }
 }

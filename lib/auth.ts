@@ -16,9 +16,6 @@ class Auth {
     this.validateUser(user);
     this.validatePassword(password);
 
-    console.log(user);
-    console.log(password);
-
     // Retrieve the user from the database
     const authenticatingUserSelector = this.getUserQuerySelector(user);
     const authenticatingUser = await Meteor.users.findOneAsync(authenticatingUserSelector);
@@ -31,14 +28,14 @@ class Auth {
     }
 
     // Authenticate the user's password
-    const passwordVerification = await Accounts._checkPassword(authenticatingUser, password);
+    const passwordVerification = Accounts._checkPassword(authenticatingUser, password);
     if (passwordVerification.error) {
       throw new Error('Unauthorized');
     }
 
     // Add a new auth token to the user's account
-    const authToken = await Accounts._generateStampedLoginToken();
-    const hashedToken = await Accounts._hashLoginToken(authToken.token);
+    const authToken = Accounts._generateStampedLoginToken();
+    const hashedToken = Accounts._hashLoginToken(authToken.token);
     Accounts._insertHashedLoginToken(authenticatingUser._id, { hashedToken, when: new Date() });
 
     return { authToken: authToken.token, userId: authenticatingUser._id, when: authToken.when };

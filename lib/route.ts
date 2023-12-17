@@ -1,13 +1,8 @@
 import { Meteor } from 'meteor/meteor';
 import { Request, Response } from 'express';
-import { JsonRoutes } from 'meteor/simple:json-routes'; // Adjust based on your actual import
+import { JsonRoutes } from './json-routes'; // Adjust based on your actual import
 import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
-
-interface User {
-  _id: string;
-  // ... other properties
-}
 
 interface EndpointContext {
   urlParams: any;
@@ -16,7 +11,7 @@ interface EndpointContext {
   request: Request;
   response: Response;
   done: () => void;
-  user?: User;
+  user?: Meteor.User;
   userId?: string;
 }
 
@@ -76,9 +71,6 @@ class Route {
           try {
             const responseData = await this._callEndpoint(endpointContext, endpoint);
             // Add a debug line that logs out the request and response in a structured way
-            console.log('Request and response:')
-            console.log({ request: { url: req.url, params: req.params, query: req.query, body: req.body }, response: { statusCode: responseData.statusCode, headers: responseData.headers, body: responseData.body } });
-
             if (responseData) {
               JsonRoutes.sendResult(res, {
                 code: responseData.statusCode,
