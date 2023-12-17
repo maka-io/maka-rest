@@ -151,19 +151,6 @@ class Route {
     }
     return hasRole;
   }
-
-  private async _respond(response: Response, body: any, statusCode: number = 200, headers: Record<string, string> = {}): Promise<void> {
-    body = await body; // Ensure that body is resolved if it's a promise
-    headers = { ...this.api._config.defaultHeaders, ...headers };
-
-    if (headers['Content-Type'].includes('json')) {
-      body = JSON.stringify(body, null, this.api._config.prettyJson ? 2 : 0);
-    }
-
-    response.writeHead(statusCode, headers);
-    response.write(body);
-    response.end();
-  }
 };
 
 export { Route };

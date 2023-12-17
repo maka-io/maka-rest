@@ -74,7 +74,6 @@ class Restivus {
     this.normalizeApiPath();
     this.initializeDefaultAuthEndpoints();
     this.initializeWildcardRoutes();
-
   }
 
   private configureCors(): void {
