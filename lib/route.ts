@@ -31,12 +31,14 @@ class Route {
   private path: string;
   private options: RouteOptions;
   private endpoints: { [method: string]: EndpointOptions };
+  private jsonRoutes: JsonRoutes;
 
   constructor(api: any, path: string, options: RouteOptions, endpoints: { [method: string]: EndpointOptions }) {
     this.api = api;
     this.path = path;
     this.options = options || {};
     this.endpoints = endpoints || this.options;
+    this.jsonRoutes = new JsonRoutes();
   }
 
   addToApi(onRoot: boolean = false): void {
@@ -57,7 +59,7 @@ class Route {
     Object.keys(this.endpoints).forEach((method) => {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
-        JsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
+        this.jsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
           const endpointContext: EndpointContext = {
             urlParams: req.params,
             queryParams: req.query,
@@ -72,7 +74,7 @@ class Route {
             const responseData = await this._callEndpoint(endpointContext, endpoint);
             // Add a debug line that logs out the request and response in a structured way
             if (responseData) {
-              JsonRoutes.sendResult(res, {
+              this.jsonRoutes.sendResult(res, {
                 code: responseData.statusCode,
                 headers: responseData.headers,
                 data: responseData.body
@@ -84,6 +86,8 @@ class Route {
         });
       }
     });
+
+    this.jsonRoutes.processRoutes();
   }
 
   private _resolveEndpoints(): void {

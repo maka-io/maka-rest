@@ -8,37 +8,41 @@ interface Password {
 
 class Auth {
   static async loginWithPassword(user: Partial<Meteor.User>, password: string | Password) {
-    if (!user || !password) {
-      throw new Error('Unauthorized');
+    try {
+      if (!user || !password) {
+        throw new Error('Unauthorized');
+      }
+
+      // Validate the login input
+      this.validateUser(user);
+      this.validatePassword(password);
+
+      // Retrieve the user from the database
+      const authenticatingUserSelector = this.getUserQuerySelector(user);
+      const authenticatingUser = await Meteor.users.findOneAsync(authenticatingUserSelector);
+
+      if (!authenticatingUser) {
+        throw 'Unauthorized';
+      }
+      if (!authenticatingUser.services?.password) {
+        throw 'Unauthorized';
+      }
+
+      // Authenticate the user's password
+      const passwordVerification = Accounts._checkPassword(authenticatingUser, password);
+      if (passwordVerification.error) {
+        throw 'Unauthorized';
+      }
+
+      // Add a new auth token to the user's account
+      const authToken = Accounts._generateStampedLoginToken();
+      const hashedToken = Accounts._hashLoginToken(authToken.token);
+      Accounts._insertHashedLoginToken(authenticatingUser._id, { hashedToken, when: new Date() });
+
+      return { authToken: authToken.token, userId: authenticatingUser._id, when: authToken.when };
+    } catch (error) {
+      return { error };
     }
-
-    // Validate the login input
-    this.validateUser(user);
-    this.validatePassword(password);
-
-    // Retrieve the user from the database
-    const authenticatingUserSelector = this.getUserQuerySelector(user);
-    const authenticatingUser = await Meteor.users.findOneAsync(authenticatingUserSelector);
-
-    if (!authenticatingUser) {
-      throw new Error('Unauthorized');
-    }
-    if (!authenticatingUser.services?.password) {
-      throw new Error('Unauthorized');
-    }
-
-    // Authenticate the user's password
-    const passwordVerification = Accounts._checkPassword(authenticatingUser, password);
-    if (passwordVerification.error) {
-      throw new Error('Unauthorized');
-    }
-
-    // Add a new auth token to the user's account
-    const authToken = Accounts._generateStampedLoginToken();
-    const hashedToken = Accounts._hashLoginToken(authToken.token);
-    Accounts._insertHashedLoginToken(authenticatingUser._id, { hashedToken, when: new Date() });
-
-    return { authToken: authToken.token, userId: authenticatingUser._id, when: authToken.when };
   }
 
   private static validateUser(user: Partial<Meteor.User>): void {

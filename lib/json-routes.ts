@@ -68,7 +68,7 @@ class JsonRoutes {
   }
 
   private matchRoute(req: Request) {
-    return this.routes.find(route => route.method.toUpperCase() === req.method && req.url.startsWith(route.path));
+    return this.routes.find(route => route.method.toUpperCase() === req.method && req.url === route.path);
   }
 
   public processRequest(req: Request, res: Response, next: NextFunction) {

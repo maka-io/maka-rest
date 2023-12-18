@@ -157,7 +157,14 @@ class Restivus {
           const extra = this._config.onLoggedIn?.call(this, incomingMessage);
           return extra ? { ...Codes.success200(auth), extra } : Codes.success200(auth);
         }
-        return Codes.badRequest400('Error attempting login');
+
+        console.log(auth);
+
+        const extra = this._config.onLoginFailure?.call(this, incomingMessage);
+        if (auth.error) {
+          return Codes.unauthorized401({ error: auth.error, ...extra });
+        }
+        return Codes.badRequest400({ message: 'Error attempting login', ...extra });
       }
     });
 
@@ -188,11 +195,12 @@ class Restivus {
     }
 
     const hashedToken = Accounts._hashLoginToken(authToken);
-    const tokenLocation = this._config.auth.token;
-    const [tokenPath, tokenFieldName] = tokenLocation.split('.');
 
     // Remove the specific token from the user's account
-    await Meteor.users.updateAsync(user._id, { $pull: { [tokenPath]: { [tokenFieldName]: hashedToken } } });
+    await Meteor.users.updateAsync(
+      { _id: user._id, 'services.resume.loginTokens': { $exists: true, $type: 'array' } },
+      { $pull: { 'services.resume.loginTokens': { hashedToken } } }
+    );
 
     // Call the logout hook if it's defined
     const extra = this._config.onLoggedOut?.call(this, incomingMessage);
