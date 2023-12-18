@@ -86,8 +86,11 @@ class JsonRoutes {
     return this.routes.find(route => {
       const isMethodMatch = route.method.toUpperCase() === req.method;
 
+      // Extract the path without query parameters
+      const pathWithoutQuery = req.url.split('?')[0];
+
       // Normalize paths to ensure consistency in matching
-      const normalizedReqPath = this.normalizePath(req.url);
+      const normalizedReqPath = this.normalizePath(pathWithoutQuery);
       const normalizedRoutePath = this.normalizePath(route.path);
 
       const isPathMatch = normalizedReqPath === normalizedRoutePath;
@@ -100,7 +103,6 @@ class JsonRoutes {
     // Remove a trailing slash if it exists, except for the root path '/'
     return (path !== '/') ? path.replace(/\/$/, '') : path;
   }
-
   private processRequest(req: Request, res: Response, next: NextFunction) {
     let index = 0;
     const nextMiddleware = () => {
@@ -119,6 +121,7 @@ class JsonRoutes {
     WebApp.connectHandlers.use((req: Request, res: Response, next: NextFunction) => {
       if (req.url.startsWith(`/${apiRoot}`)) {
         instance.processRequest(req, res, () => {
+          console.log(`Processing ${req.method} request to ${req.url}`);
           const route = instance.matchRoute(req);
           if (route) {
             instance.setHeaders(res, instance.responseHeaders);

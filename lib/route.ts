@@ -85,21 +85,23 @@ class Route {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
         JsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
-          // Rate limiting logic
-          try {
+          if (this.api._config.rateLimiterOptions) {
+            // Rate limiting logic
+            try {
               const key = this.api._config.rateLimitOptions.keyGenerator
-              ? this.api._config.rateLimitOptions.keyGenerator(req)
-              : req.ip;
+                ? this.api._config.rateLimitOptions.keyGenerator(req)
+                : req.ip;
 
-            // Use the route-specific rate limiter if it exists, otherwise fall back to the global one
-            const limiter = this.rateLimiter || this.api.rateLimiter;
-            await limiter.consume(key);
-          } catch (rejRes) {
-            JsonRoutes.sendResult(res, {
-              code: 429,
-              data: 'Too many requests'
-            });
-            return;
+              // Use the route-specific rate limiter if it exists, otherwise fall back to the global one
+              const limiter = this.rateLimiter || this.api.rateLimiter;
+              await limiter.consume(key);
+            } catch (rejRes) {
+              JsonRoutes.sendResult(res, {
+                code: 429,
+                data: 'Too many requests'
+              });
+              return;
+            }
           }
 
           const endpointContext: EndpointContext = {
