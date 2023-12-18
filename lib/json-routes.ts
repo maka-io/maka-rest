@@ -121,7 +121,6 @@ class JsonRoutes {
     WebApp.connectHandlers.use((req: Request, res: Response, next: NextFunction) => {
       if (req.url.startsWith(`/${apiRoot}`)) {
         instance.processRequest(req, res, () => {
-          console.log(`Processing ${req.method} request to ${req.url}`);
           const route = instance.matchRoute(req);
           if (route) {
             instance.setHeaders(res, instance.responseHeaders);
