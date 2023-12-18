@@ -41,6 +41,7 @@ interface BodyParams {
 }
 
 class MakaRest {
+  private static _instance: MakaRest;
   readonly _routes: Route[];
   readonly _config: MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
@@ -48,7 +49,7 @@ class MakaRest {
   request: Request;
   response: Response;
 
-  constructor(options: Partial<MakaRestOptions>) {
+  private constructor(options: Partial<MakaRestOptions>) {
     this._routes = [];
     this._config = {
       paths: [],
@@ -91,6 +92,16 @@ class MakaRest {
     this.partialApiPath = this.normalizeApiPath(this._config);
     this.initializeDefaultAuthEndpoints();
     this.initializeWildcardRoutes();
+  }
+
+  public static getInstance(options?: Partial<MakaRestOptions>): MakaRest {
+    if (!MakaRest._instance) {
+      if (!options) {
+        throw new Error("Options must be provided for MakaRest initialization.");
+      }
+      MakaRest._instance = new MakaRest(options);
+    }
+    return MakaRest._instance;
   }
 
   private configureCors(): void {
