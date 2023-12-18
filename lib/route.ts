@@ -1,6 +1,6 @@
 import { Meteor } from 'meteor/meteor';
 import { Request, Response } from 'express';
-import { JsonRoutes } from 'meteor/simple:json-routes';
+import { JsonRoutes } from './json-routes';
 import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
 

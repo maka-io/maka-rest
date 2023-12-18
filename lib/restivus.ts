@@ -34,8 +34,6 @@ interface BodyParams {
 class Restivus {
   private _routes: Route[];
   private _config: RestivusOptions;
-  private user: Meteor.User | null;
-  private userId: string | null;
   request: Request;
   response: Response;
 
@@ -141,21 +139,10 @@ class Restivus {
     return !resultOfInvocation.error;
   }
 
-  private _validate(options: { username?: string; password: string; email?: string }): boolean {
-    const { username, password, email } = options;
-    if (!password) throw new Error('Password must be provided');
-    if (!username && !email) throw new Error('Username or email must be provided');
-
-    const user = email ? Meteor.users.findOne({ "emails.address": email }) : Meteor.users.findOne({ username });
-    if (!user) throw new Error(`User not found for username: ${username}`);
-
-    return this._validateUser(user, password);
-  }
-
   private _initAuth(): void {
     this.addRoute('login', { authRequired: false }, {
       post: async (incomingMessage: IncomingMessage) => { // Replace with proper types
-        const { bodyParams, request } = incomingMessage;
+        const { bodyParams } = incomingMessage;
 
         const user = this._extractUser(bodyParams) as Meteor.User;
         const auth = await Auth.loginWithPassword(user, this._extractPassword(bodyParams));
@@ -187,7 +174,6 @@ class Restivus {
       throw new Error('Username or email must be provided');
     }
   }
-
 
   private _extractPassword(body: BodyParams): string | { digest: string; algorithm: string } {
     return body.hashed ? { digest: body.password, algorithm: 'sha-256' } : body.password;

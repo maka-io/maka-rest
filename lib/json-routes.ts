@@ -12,50 +12,54 @@ interface Middleware {
 }
 
 class JsonRoutes {
-  private static routes: RouteHandler[] = [];
-  private static middlewares: Middleware[] = [];
-  private static errorMiddlewares: Middleware[] = [];
-  private static responseHeaders: Record<string, string> = {
+  private routes: RouteHandler[] = [];
+  private middlewares: Middleware[] = [];
+  private errorMiddlewares: Middleware[] = [];
+  private responseHeaders: Record<string, string> = {
     'Cache-Control': 'no-store',
     Pragma: 'no-cache',
   };
 
-  public static add(method: string, path: string, handler: (req: Request, res: Response, next: NextFunction) => void) {
+  constructor() {
+    // Initialize instance properties if needed
+  }
+
+  public add(method: string, path: string, handler: (req: Request, res: Response, next: NextFunction) => void) {
     if (path[0] !== '/') {
       path = '/' + path;
     }
-    JsonRoutes.routes.push({ method, path, handler });
+    this.routes.push({ method, path, handler });
   }
 
-  public static use(middleware: Middleware) {
-    JsonRoutes.middlewares.push(middleware);
+  public use(middleware: Middleware) {
+    this.middlewares.push(middleware);
   }
 
-  public static useErrorMiddleware(middleware: Middleware) {
-    JsonRoutes.errorMiddlewares.push(middleware);
+  public useErrorMiddleware(middleware: Middleware) {
+    this.errorMiddlewares.push(middleware);
   }
 
-  public static setResponseHeaders(headers: Record<string, string>) {
-    JsonRoutes.responseHeaders = headers;
+  public setResponseHeaders(headers: Record<string, string>) {
+    this.responseHeaders = headers;
   }
 
-  public static sendResult(res: Response, options: { code?: number; headers?: Record<string, string>; data?: any }) {
+  public sendResult(res: Response, options: { code?: number; headers?: Record<string, string>; data?: any }) {
     options = options || {};
     if (options.headers) {
-      JsonRoutes.setHeaders(res, options.headers);
+      this.setHeaders(res, options.headers);
     }
     res.statusCode = options.code || 200;
-    JsonRoutes.writeJsonToBody(res, options.data);
+    this.writeJsonToBody(res, options.data);
     res.end();
   }
 
-  private static setHeaders(res: Response, headers: Record<string, string>) {
+  private setHeaders(res: Response, headers: Record<string, string>) {
     Object.entries(headers).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
   }
 
-  private static writeJsonToBody(res: Response, json: any) {
+  private writeJsonToBody(res: Response, json: any) {
     if (json !== undefined) {
       const shouldPrettyPrint = process.env.NODE_ENV === 'development';
       res.setHeader('Content-type', 'application/json');
@@ -63,16 +67,16 @@ class JsonRoutes {
     }
   }
 
-  private static matchRoute(req: Request) {
-    return JsonRoutes.routes.find(route => route.method.toUpperCase() === req.method && req.url.startsWith(route.path));
+  private matchRoute(req: Request) {
+    return this.routes.find(route => route.method.toUpperCase() === req.method && req.url.startsWith(route.path));
   }
 
-  public static processRequest(req: Request, res: Response, next: NextFunction) {
+  public processRequest(req: Request, res: Response, next: NextFunction) {
     let index = 0;
 
     const nextMiddleware = () => {
-      if (index < JsonRoutes.middlewares.length) {
-        const middleware = JsonRoutes.middlewares[index++];
+      if (index < this.middlewares.length) {
+        const middleware = this.middlewares[index++];
         middleware(req, res, nextMiddleware);
       } else {
         next();
@@ -82,13 +86,12 @@ class JsonRoutes {
     nextMiddleware();
   }
 
-  public static processRoutes() {
+  public processRoutes() {
     WebApp.connectHandlers.use((req: Request, res: Response, next: NextFunction) => {
-      JsonRoutes.processRequest(req, res, () => {
-        console.log(this);
-        const route = JsonRoutes.matchRoute(req);
+      this.processRequest(req, res, () => {
+        const route = this.matchRoute(req);
         if (route) {
-          JsonRoutes.setHeaders(res, JsonRoutes.responseHeaders);
+          this.setHeaders(res, this.responseHeaders);
           try {
             route.handler(req, res, next);
           } catch (error) {
@@ -100,10 +103,11 @@ class JsonRoutes {
       });
     });
 
-    JsonRoutes.errorMiddlewares.forEach(middleware => {
+    this.errorMiddlewares.forEach(middleware => {
       WebApp.connectHandlers.use(middleware);
     });
   }
 }
 
 export { JsonRoutes };
+
