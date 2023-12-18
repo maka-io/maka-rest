@@ -4,6 +4,8 @@ import { Route } from './route';
 import { Auth } from './auth';
 import Codes, { StatusResponse } from './codes';
 import { Request, Response, IncomingMessage } from 'express';
+import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
+import { RedisClient } from 'redis';
 
 interface RestivusOptions {
   paths: string[];
@@ -18,10 +20,15 @@ interface RestivusOptions {
   };
   defaultHeaders: Record<string, string>;
   enableCors: boolean;
-  defaultOptionsEndpoint?: () => void;
   onLoginFailure?: (req: Request) => any;
   onLoggedIn?: (incomingMessage: IncomingMessage) => any;
   onLoggedOut?: (incomingMessage: IncomingMessage) => any;
+  rateLimitOptions?: IRateLimiterOptions
+    & {
+      useRedis?: boolean;
+      redis?: RedisClient;
+      keyGenerator?: (req: Request) => string;
+    };
 }
 
 interface BodyParams {
@@ -32,8 +39,9 @@ interface BodyParams {
 }
 
 class Restivus {
-  private _routes: Route[];
-  private _config: RestivusOptions;
+  readonly _routes: Route[];
+  readonly _config: RestivusOptions;
+  public rateLimiter?: RateLimiterMemory | RateLimiterRedis;
   request: Request;
   response: Response;
 
@@ -65,8 +73,16 @@ class Restivus {
       ...options
     };
 
-    this.user = null;
-    this.userId = null;
+    if (options.rateLimitOptions) {
+      if (options.rateLimitOptions.useRedis && options.rateLimitOptions.redis) {
+        this.rateLimiter = new RateLimiterRedis({
+          storeClient: options.rateLimitOptions.redis,
+          ...options.rateLimitOptions,
+        });
+      } else {
+        this.rateLimiter = new RateLimiterMemory(options.rateLimitOptions);
+      }
+    }
 
     this.configureCors();
     this.normalizeApiPath();
@@ -86,13 +102,6 @@ class Restivus {
       }
 
       Object.assign(this._config.defaultHeaders, corsHeaders);
-
-      if (!this._config.defaultOptionsEndpoint) {
-        this._config.defaultOptionsEndpoint = () => {
-          this.response.writeHead(200, this._config.defaultHeaders);
-          this.response.end();
-        };
-      }
     }
   }
 

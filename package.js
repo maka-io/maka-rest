@@ -12,7 +12,8 @@ Npm.depends({
   'express': '4.18.2',
   '@types/express': '4.17.21',
   'http-status-codes': '2.3.0',
-
+  'rate-limiter-flexible': '4.0.0',
+  'redis': '4.6.11'
 });
 
 Package.onUse(function (api) {

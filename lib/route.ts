@@ -1,8 +1,10 @@
 import { Meteor } from 'meteor/meteor';
 import { Request, Response } from 'express';
+import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
 import { JsonRoutes } from './json-routes';
 import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
+import { Restivus } from './restivus';
 
 interface EndpointContext {
   urlParams: any;
@@ -24,14 +26,20 @@ interface EndpointOptions {
 
 interface RouteOptions {
   [key: string]: any; // Define specific route options here
+  rateLimit?: {
+    points?: number;
+    duration?: number;
+  };
 }
 
 class Route {
-  private api: any; // Replace with the actual type of your API class
+  private api: Restivus; // Replace with the actual type of your API class
   private path: string;
   private options: RouteOptions;
   private endpoints: { [method: string]: EndpointOptions };
   private jsonRoutes: JsonRoutes;
+  private rateLimiter?: RateLimiterMemory | RateLimiterRedis;
+
 
   constructor(api: any, path: string, options: RouteOptions, endpoints: { [method: string]: EndpointOptions }) {
     this.api = api;
@@ -39,6 +47,24 @@ class Route {
     this.options = options || {};
     this.endpoints = endpoints || this.options;
     this.jsonRoutes = new JsonRoutes();
+
+    if (options.rateLimit) {
+      if (!this.api._config.rateLimitOptions) {
+        throw new Error('Rate limiting is not enabled. To add rate limiting to a route, first configure the main rateLimitOptions');
+      }
+      // Create a new rate limiter for this route if custom rate limit settings are provided
+      this.rateLimiter = this.api._config.rateLimitOptions.useRedis ?
+        new RateLimiterRedis({
+          storeClient: this.api._config.rateLimitOptions.redis,
+          points: options.rateLimit.points || this.api._config.rateLimitOptions.points,
+          duration: options.rateLimit.duration || this.api._config.rateLimitOptions.duration,
+          keyPrefix: 'custom_' + path
+        }) :
+        new RateLimiterMemory({
+          points: options.rateLimit.points || this.api._config.rateLimitOptions.points,
+          duration: options.rateLimit.duration || this.api._config.rateLimitOptions.duration,
+        });
+    }
   }
 
   addToApi(onRoot: boolean = false): void {
@@ -48,8 +74,6 @@ class Route {
       throw new Error(`Cannot add a route at an existing path: ${this.path}`);
     }
 
-    // Override the default OPTIONS endpoint with our own
-    this.endpoints.options = this.api._config.defaultOptionsEndpoint;
     this._resolveEndpoints();
     this._configureEndpoints();
 
@@ -60,6 +84,23 @@ class Route {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
         this.jsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
+          // Rate limiting logic
+          try {
+              const key = this.api._config.rateLimitOptions.keyGenerator
+              ? this.api._config.rateLimitOptions.keyGenerator(req)
+              : req.ip;
+
+            // Use the route-specific rate limiter if it exists, otherwise fall back to the global one
+            const limiter = this.rateLimiter || this.api.rateLimiter;
+            await limiter.consume(key);
+          } catch (rejRes) {
+            this.jsonRoutes.sendResult(res, {
+              code: 429,
+              data: 'Too many requests'
+            });
+            return;
+          }
+
           const endpointContext: EndpointContext = {
             urlParams: req.params,
             queryParams: req.query,
