@@ -10,9 +10,10 @@ import { RedisClient } from 'redis';
 interface MakaRestOptions {
   paths: string[];
   useDefaultAuth: boolean;
-  apiPath: string;
-  apiRoot?: string;
-  version: string | null;
+  apiRoot: string; // Root of the API, e.g., 'api'
+  apiPath?: string; // Additional path after the version, required unless isRoot is true
+  version: string; // API version, e.g., 'v1'
+  isRoot?: boolean; // If true, this instance represents the root of the API
   prettyJson: boolean;
   auth: {
     token: string;
@@ -43,6 +44,7 @@ class MakaRest {
   readonly _routes: Route[];
   readonly _config: MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
+  readonly partialApiPath: string;
   request: Request;
   response: Response;
 
@@ -51,8 +53,8 @@ class MakaRest {
     this._config = {
       paths: [],
       useDefaultAuth: false,
-      apiPath: 'api/',
-      version: null,
+      apiRoot: 'api',
+      version: 'v1',
       prettyJson: false,
       auth: {
         token: 'services.resume.loginTokens.hashedToken',
@@ -86,7 +88,7 @@ class MakaRest {
     }
 
     this.configureCors();
-    this.normalizeApiPath();
+    this.partialApiPath = this.normalizeApiPath(this._config);
     this.initializeDefaultAuthEndpoints();
     this.initializeWildcardRoutes();
   }
@@ -113,14 +115,21 @@ class MakaRest {
     }
   }
 
-  private normalizeApiPath(): void {
-    this._config.apiPath = this._config.apiPath.startsWith('/') ? this._config.apiPath.slice(1) : this._config.apiPath;
-    this._config.apiPath = this._config.apiPath.endsWith('/') ? this._config.apiPath : `${this._config.apiPath}/`;
-
-    if (this._config.version) {
-      this._config.apiRoot = this._config.apiPath;
-      this._config.apiPath += `${this._config.version}/`;
+  private normalizeApiPath(options: Partial<MakaRestOptions>): string {
+    // Validate apiPath and isRoot
+    if (!options.isRoot && !options.apiPath) {
+      throw new Error("apiPath must be defined unless isRoot is set to true.");
     }
+
+    // Construct the base path
+    let basePath = `${options.apiRoot}/${options.version}`;
+    if (options.apiPath) {
+      basePath += `/${options.apiPath}`;
+    }
+
+    // Normalize slashes
+    const partialApiPath = basePath.replace(/\/+/g, '/');
+    return partialApiPath;
   }
 
   private initializeDefaultAuthEndpoints(): void {
@@ -130,16 +139,21 @@ class MakaRest {
   }
 
   private initializeWildcardRoutes(): void {
+    // Existing code to initialize specific wildcard routes
     if (!this._config.paths.includes('/')) {
       this.addRoute('/', { onRoot: true }, { get: () => Codes.success200('API Root') });
-      this.addRoute('/', {}, { get: () => Codes.success200(`API ${this._config.version} Root`) });
+      this.addRoute('/', {}, { get: () => Codes.success200(`API ${this._config.apiPath} ${this._config.version} Root`) });
     }
 
     if (!this._config.paths.includes('*')) {
       this.addRoute('*', {}, { get: () => Codes.notFound404() });
       this.addRoute('*', { onRoot: true }, { get: () => Codes.notFound404() });
     }
+
+    // Add a catch-all route for any other request that includes the apiRoot
+    this.addRoute(`${this._config.apiRoot}/*`, {}, { get: () => Codes.notFound404() });
   }
+
 
   addRoute(path: string, options: any, endpoints: any): void {
     const route = new Route(this, path, options, endpoints);
@@ -157,7 +171,7 @@ class MakaRest {
   }
 
   private _initAuth(): void {
-    this.addRoute('login', { authRequired: false }, {
+    this.addRoute('login', { onRoot: true, authRequired: false }, {
       post: async (incomingMessage: IncomingMessage) => { // Replace with proper types
         const { bodyParams } = incomingMessage;
 
@@ -185,8 +199,8 @@ class MakaRest {
       }
     });
 
-    this.addRoute('logout', { authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logout(incomingMessage) });
-    this.addRoute('logoutAll', { authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logoutAll(incomingMessage) });
+    this.addRoute('logout', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logout(incomingMessage) });
+    this.addRoute('logoutAll', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logoutAll(incomingMessage) });
   }
 
   private _extractUser(body: BodyParams): Partial<Meteor.User> {

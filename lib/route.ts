@@ -40,13 +40,12 @@ class Route {
   private jsonRoutes: JsonRoutes;
   private rateLimiter?: RateLimiterMemory | RateLimiterRedis;
 
-
   constructor(api: any, path: string, options: RouteOptions, endpoints: { [method: string]: EndpointOptions }) {
     this.api = api;
     this.path = path;
     this.options = options || {};
     this.endpoints = endpoints || this.options;
-    this.jsonRoutes = new JsonRoutes();
+    this.jsonRoutes = JsonRoutes.getInstance();
 
     if (options.rateLimit) {
       if (!this.api._config.rateLimitOptions) {
@@ -81,11 +80,11 @@ class Route {
 
     this.api._config.paths.push(this.path);
 
-    const fullPath = onRoot ? this.api._config.apiRoot + this.path : this.api._config.apiPath + this.path;
-    Object.keys(this.endpoints).forEach((method) => {
+    const fullPath = onRoot ? `${this.api._config.apiRoot}/${this.path}`.replace(/\/+/g, '/') :`${this.api.partialApiPath}/${this.path}`.replace(/\/+/g, '/');
+    for (const method of Object.keys(this.endpoints)) {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
-        this.jsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
+        JsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
           // Rate limiting logic
           try {
               const key = this.api._config.rateLimitOptions.keyGenerator
@@ -96,7 +95,7 @@ class Route {
             const limiter = this.rateLimiter || this.api.rateLimiter;
             await limiter.consume(key);
           } catch (rejRes) {
-            this.jsonRoutes.sendResult(res, {
+            JsonRoutes.sendResult(res, {
               code: 429,
               data: 'Too many requests'
             });
@@ -117,7 +116,7 @@ class Route {
             const responseData = await this._callEndpoint(endpointContext, endpoint);
             // Add a debug line that logs out the request and response in a structured way
             if (responseData) {
-              this.jsonRoutes.sendResult(res, {
+              JsonRoutes.sendResult(res, {
                 code: responseData.statusCode,
                 headers: responseData.headers,
                 data: responseData.body
@@ -128,9 +127,9 @@ class Route {
           }
         });
       }
-    });
+    }
 
-    this.jsonRoutes.processRoutes();
+    JsonRoutes.processRoutes(this.api._config.apiRoot);
   }
 
   private _resolveEndpoints(): void {

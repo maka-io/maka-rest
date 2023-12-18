@@ -12,6 +12,7 @@ interface Middleware {
 }
 
 class JsonRoutes {
+  private static instance: JsonRoutes;
   private routes: RouteHandler[] = [];
   private middlewares: Middleware[] = [];
   private errorMiddlewares: Middleware[] = [];
@@ -20,36 +21,50 @@ class JsonRoutes {
     Pragma: 'no-cache',
   };
 
-  constructor() {
+  // Make the constructor private
+  private constructor() {
     // Initialize instance properties if needed
   }
 
-  public add(method: string, path: string, handler: (req: Request, res: Response, next: NextFunction) => void) {
+  // Public static method to access the instance
+  public static getInstance(): JsonRoutes {
+    if (!JsonRoutes.instance) {
+      JsonRoutes.instance = new JsonRoutes();
+    }
+    return JsonRoutes.instance;
+  }
+
+  public static add(method: string, path: string, handler: (req: Request, res: Response, next: NextFunction) => void) {
+    const instance = JsonRoutes.getInstance();
     if (path[0] !== '/') {
       path = '/' + path;
     }
-    this.routes.push({ method, path, handler });
+    instance.routes.push({ method, path, handler });
   }
 
-  public use(middleware: Middleware) {
-    this.middlewares.push(middleware);
+  public static use(middleware: Middleware) {
+    const instance = JsonRoutes.getInstance();
+    instance.middlewares.push(middleware);
   }
 
-  public useErrorMiddleware(middleware: Middleware) {
-    this.errorMiddlewares.push(middleware);
+  public static useErrorMiddleware(middleware: Middleware) {
+    const instance = JsonRoutes.getInstance();
+    instance.errorMiddlewares.push(middleware);
   }
 
-  public setResponseHeaders(headers: Record<string, string>) {
-    this.responseHeaders = headers;
+  public static setResponseHeaders(headers: Record<string, string>) {
+    const instance = JsonRoutes.getInstance();
+    instance.responseHeaders = headers;
   }
 
-  public sendResult(res: Response, options: { code?: number; headers?: Record<string, string>; data?: any }) {
+  public static sendResult(res: Response, options: { code?: number; headers?: Record<string, string>; data?: any }) {
+    const instance = JsonRoutes.getInstance();
     options = options || {};
     if (options.headers) {
-      this.setHeaders(res, options.headers);
+      instance.setHeaders(res, options.headers);
     }
     res.statusCode = options.code || 200;
-    this.writeJsonToBody(res, options.data);
+    instance.writeJsonToBody(res, options.data);
     res.end();
   }
 
@@ -68,12 +83,26 @@ class JsonRoutes {
   }
 
   private matchRoute(req: Request) {
-    return this.routes.find(route => route.method.toUpperCase() === req.method && req.url === route.path);
+    return this.routes.find(route => {
+      const isMethodMatch = route.method.toUpperCase() === req.method;
+
+      // Normalize paths to ensure consistency in matching
+      const normalizedReqPath = this.normalizePath(req.url);
+      const normalizedRoutePath = this.normalizePath(route.path);
+
+      const isPathMatch = normalizedReqPath === normalizedRoutePath;
+      return isMethodMatch && isPathMatch;
+    });
   }
 
-  public processRequest(req: Request, res: Response, next: NextFunction) {
-    let index = 0;
+  // Helper function to normalize paths by removing trailing slash if present
+  private normalizePath(path: string): string {
+    // Remove a trailing slash if it exists, except for the root path '/'
+    return (path !== '/') ? path.replace(/\/$/, '') : path;
+  }
 
+  private processRequest(req: Request, res: Response, next: NextFunction) {
+    let index = 0;
     const nextMiddleware = () => {
       if (index < this.middlewares.length) {
         const middleware = this.middlewares[index++];
@@ -82,32 +111,36 @@ class JsonRoutes {
         next();
       }
     };
-
     nextMiddleware();
   }
 
-  public processRoutes() {
+  public static processRoutes(apiRoot: string) {
+    const instance = JsonRoutes.getInstance();
     WebApp.connectHandlers.use((req: Request, res: Response, next: NextFunction) => {
-      this.processRequest(req, res, () => {
-        const route = this.matchRoute(req);
-        if (route) {
-          this.setHeaders(res, this.responseHeaders);
-          try {
-            route.handler(req, res, next);
-          } catch (error) {
-            next(error);
+      if (req.url.startsWith(`/${apiRoot}`)) {
+        instance.processRequest(req, res, () => {
+          const route = instance.matchRoute(req);
+          if (route) {
+            instance.setHeaders(res, instance.responseHeaders);
+            try {
+              route.handler(req, res, next);
+            } catch (error) {
+              next(error);
+            }
+          } else {
+            res.statusCode = 404;
+            instance.writeJsonToBody(res, { error: 'Not Found' });
+            res.end();
           }
-        } else {
-          next();
-        }
-      });
+        });
+      } else {
+        next();
+      }
     });
-
-    this.errorMiddlewares.forEach(middleware => {
+    instance.errorMiddlewares.forEach(middleware => {
       WebApp.connectHandlers.use(middleware);
     });
   }
 }
 
 export { JsonRoutes };
-
