@@ -9,13 +9,6 @@
   - [Terminology](#terminology)
 - [Writing a Maka-Rest API](#writing-a-maka-rest-api)
   - [Configuration Options](#configuration-options)
-  - [Defining Collection Routes](#defining-collection-routes)
-    - [Collection](#collection)
-    - [Collection Options](#collection-options)
-      - [Route Configuration](#route-configuration)
-      - [Endpoint Configuration](#endpoint-configuration)
-    - [Request and Response Structure](#request-and-response-structure)
-    - [Users Collection Endpoints](#users-collection-endpoints)
   - [Defining Custom Routes](#defining-custom-routes)
     - [Path Structure](#path-structure)
     - [Route Options](#route-options)
@@ -51,7 +44,7 @@ Or using maka-cli
 ## Quick Start
 
 ```javascript
-	import { Restivus } from 'meteor/maka:rest';
+	import MakaRest from 'meteor/maka:rest';
 ```
 
 Often, the easiest way to explain something is by example, so here's a short example of what it's
@@ -63,30 +56,9 @@ Articles = new Mongo.Collection('articles');
 
 if (Meteor.isServer) {
   // Global API configuration
-  const Api = new Restivus({
+  const Api = new MakaRest({
     useDefaultAuth: true,
     prettyJson: true
-  });
-
-  // Generates: GET, POST on /api/items and GET, PUT, PATCH, DELETE on
-  // /api/items/:id for the Items collection
-  Api.addCollection(Items);
-
-  // Generates: POST on /api/users and GET, DELETE /api/users/:id for
-  // Meteor.users collection
-  Api.addCollection(Meteor.users, {
-    excludedEndpoints: ['getAll', 'put'],
-    routeOptions: {
-      authRequired: true
-    },
-    endpoints: {
-      post: {
-        authRequired: false
-      },
-      delete: {
-        roleRequired: 'admin'
-      }
-    }
   });
 
   // Maps to: /api/articles/:id
@@ -158,11 +130,11 @@ The following configuration options are available when initializing an API using
     - Provides one of two levels of authentication, depending on the data returned. The context
       within this function is the [endpoint context](#endpoint-context) without `this.user` and completes successfully, the authenticated user and their ID will be attached to the [endpoint
       context](#endpoint-context).
-          
-      For either level of auth described above, you can optionally return a custom error response by 
-      providing that response in an `error` field of your response object. The `error` value can be 
-      [any valid response](#response-data). If an `error` field exists in the object returned from 
-      your custom auth function, all other fields will be ignored. Do **not** provide an `error` 
+
+      For either level of auth described above, you can optionally return a custom error response by
+      providing that response in an `error` field of your response object. The `error` value can be
+      [any valid response](#response-data). If an `error` field exists in the object returned from
+      your custom auth function, all other fields will be ignored. Do **not** provide an `error`
       value if you intend for the authentication to pass successfully.
 
 ##### `defaultHeaders`
@@ -218,24 +190,24 @@ The following configuration options are available when initializing an API using
   provided, it's appended to the base path of all routes that belong to that API
     ```javascript
     // Base URL path: my-api/v1/
-    ApiV1 = new Restivus({
+    ApiV1 = new MakaRest({
       apiPath: 'my-api/',
       version: 'v1'
     });
 
     // Base URL path: my-api/v2/
-    ApiV2 = new Restivus({
+    ApiV2 = new MakaRest({
       apiPath: 'my-api/',
       version: 'v2'
     });
     ```
 
-Here's a sample configuration with the complete set of options: 
+Here's a sample configuration with the complete set of options:
 
 **Warning! For demo purposes only - using this configuration is not recommended!**
 
 ```javascript
-  new Restivus({
+  new MakaRest({
     apiPath: 'my-api/',
     auth: {
       token: 'auth.apiKey',
@@ -260,104 +232,6 @@ Here's a sample configuration with the complete set of options:
     version: 'v1'
   });
 ```
-
-## Defining Swagger Meta
-Add the swagger object to the Maka-Rest API:
-
-```javascript
-const APIv1 = new Restivus({
-    version: 'v1',
-});
-
-APIv1.swagger = {
-  swagger: "2.0",
-  info: {
-    version: "1.0.0",
-    title: "My API",
-    description: "My REST API",
-    termsOfService: "https://example.com/terms/",
-    contact: {
-      name: "Example team"
-    },
-    license: {
-      name: "MIT"
-    }
-  }
-  definitions: {
-    // Schema definitions for $refs, check spec http://swagger.io/specification/
-    // Required for body parameters
-  },
-  params: {
-    // Parameter object definitions to be used in endpoint configurations
-    // Path and body parameter types supported in v0.2.0 
-    petId: {
-      name: "id",
-      in: "path",
-      description: "Pet ID",
-      required: true,
-      type: "string"
-    }
-  },
-  tags: {
-    // Swagger UI tag variables to be used in endpoint grouping
-    pet: "Pets"
-  }
-}
-```
-
-For each endpoint, use the expanded definitions
-```javascript
-APIv1.addRoute('/todo', {
-    get: {
-        action() {
-            return "Find Pets";
-        },
-        swagger: {
-            tags: [ APIv1.swagger.tags.pet ],
-            description: "Returns a pet with ID",
-            parameters: [ APIv1.swagger.params.petId ],
-            responses: {
-                '200': {
-                    description: "Successful pets list"
-                }
-            }
-        }
-    }
-});
-```
-
-Then, simply define where to find the swagger.json:
-
-```javascript
-APIv1.addSwagger('swagger.json'); // resolves to '/api/v1/swagger.json'
-```
-
-## Defining Collection Routes
-
-One of the most common uses for a REST API is exposing a set of operations on your collections.
-Well, you're in luck, because this is almost _too easy_ with Maka-Rest! All available REST endpoints
-(except `patch` and `options`, for now) can be generated for a Mongo Collection using
-`Maka-Rest#addCollection()`. This generates two routes by default:
-
-**`/api/<collection>`**
-- Operations on the entire collection
--  `GET` and `POST`
-
-**`/api/<collection>/:id`**
-- Operations on a single entity within the collection
-- `GET`, `PUT`, `PATCH` and `DELETE`
-
-### Collection
-
-The first - and only required - parameter of `Maka-Rest#addCollection()` is a Mongo Collection.
-Please check out the [Meteor docs](http://docs.meteor.com/#/full/collections) for more on creating
-collections. The `Meteor.users` collection will have [special endpoints]
-(#users-collection-endpoints) generated.
-
-### Collection Options
-
-Route and endpoint configuration options are available in `Maka-Rest#addCollection()` (as the 2nd,
-optional parameter).
 
 #### Route Configuration
 
@@ -575,145 +449,6 @@ Response:
   "status": "success",
   "data": {
     "message": "Item removed"
-  }
-}
-```
-
-### Users Collection Endpoints
-
-A few special exceptions have been made for routes added for the `Meteor.users` collection. For now,
-the majority of the operations are limited to read access to the `user._id` and read/write access to
-the `user.profile`. All route and endpoint options are identical to those described for all other
-collections above. No options have been configured in the examples below; however, it is highly
-recommended that role permissions be setup (or at the absolute least, authentication required) for
-the `delete` endpoint. Below are sample requests and responses for the users
-collection.
-
-Create collection:
-```javascript
-Api.addCollection(Meteor.users);
-```
-
-#### `post`
-Request:
-`POST http://localhost:3000/api/users`
-```json
-{
-  "email": "jack@mail.com",
-  "password": "password",
-  "profile": {
-    "firstName": "Jack",
-    "lastName": "Rose"
-  }
-}
-```
-_Note: The only fields that will be recognized in the request body when creating a new user are
-`email`, `username`, `password`, and `profile`. These map directly to the parameters of the same
-name in the [Accounts.createUser()](http://docs.meteor.com/#/full/accounts_createuser) method, so
-check that out for more information on how those fields are handled._
-
-Response:
-
-Status Code: `201`
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "oFpdgAMMr7F5A7P3a",
-    "profile": {
-      "firstName": "Jack",
-      "lastName": "Rose"
-    }
-  }
-}
-```
-
-#### `getAll`
-Request:
-```bash
-curl -X GET http://localhost:3000/api/users/
-```
-
-Response:
-```json
-{
-  "status": "success",
-  "data": [
-    {
-      "_id": "nBTnv83sTrf38fFTi",
-      "profile": {
-        "firstName": "Anthony",
-        "lastName": "Reid"
-      }
-    },
-    {
-      "_id": "oFpdgAMMr7F5A7P3a",
-      "profile": {
-        "firstName": "Jack",
-        "lastName": "Rose"
-      }
-    }
-  ]
-}
-```
-
-#### `get`
-Request:
-```bash
-curl -X GET http://localhost:3000/api/users/oFpdgAMMr7F5A7P3a
-```
-
-Response:
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "oFpdgAMMr7F5A7P3a",
-    "profile": {
-      "firstName": "Jack",
-      "lastName": "Rose"
-    }
-  }
-}
-```
-
-#### `put`
-Request:
-`PUT http://localhost:3000/api/users/oFpdgAMMr7F5A7P3a`
-```json
-{
-    "firstName": "Jaclyn",
-    "age": 25
-}
-```
-_Note: The data included in the request body will completely overwrite the `user.profile` field of
-the User document_
-
-Response:
-```json
-{
-  "status": "success",
-  "data": {
-    "_id": "oFpdgAMMr7F5A7P3a",
-    "profile": {
-      "firstName": "Jaclyn",
-      "age": "25"
-    }
-  }
-}
-```
-
-#### `delete`
-Request:
-```bash
-curl -X DELETE http://localhost:3000/api/users/oFpdgAMMr7F5A7P3a
-```
-Response:
-```json
-{
-  "status": "success",
-  "data": {
-    "message": "User removed"
   }
 }
 ```
@@ -1098,7 +833,7 @@ You also have an authenticated `POST /api/logout` endpoint for logging a user ou
 auth token that is passed in the request header will be invalidated (removed from the user account),
 so it will not work in any subsequent requests.
 ```bash
-curl http://localhost:3000/api/logout -X POST -H "X-Auth-Token: 8zXkiThVtm3u7pE-7xacuAIrKF1VTA-WA3LRMogqiRp" 
+curl http://localhost:3000/api/logout -X POST -H "X-Auth-Token: 8zXkiThVtm3u7pE-7xacuAIrKF1VTA-WA3LRMogqiRp"
 ```
 
 #### Authenticated Calls

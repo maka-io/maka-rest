@@ -35,8 +35,7 @@ Package.onUse(function (api) {
   // api.addFiles('lib/restivus-swagger.js', 'server');
 
   // Exports
-  //api.export('Restivus', 'server');
-  api.mainModule('lib/restivus.ts', 'server');
+  api.mainModule('lib/maka-rest.ts', 'server');
 });
 
 Package.onTest(function (api) {

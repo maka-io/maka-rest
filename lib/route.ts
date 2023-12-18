@@ -74,6 +74,8 @@ class Route {
       throw new Error(`Cannot add a route at an existing path: ${this.path}`);
     }
 
+    // Override the default OPTIONS endpoint with our own
+    this.endpoints.options = this.api._config.defaultOptionsEndpoint;
     this._resolveEndpoints();
     this._configureEndpoints();
 

@@ -7,7 +7,7 @@ import { Request, Response, IncomingMessage } from 'express';
 import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
 import { RedisClient } from 'redis';
 
-interface RestivusOptions {
+interface MakaRestOptions {
   paths: string[];
   useDefaultAuth: boolean;
   apiPath: string;
@@ -20,6 +20,7 @@ interface RestivusOptions {
   };
   defaultHeaders: Record<string, string>;
   enableCors: boolean;
+  defaultOptionsEndpoint?: () => void;
   onLoginFailure?: (req: Request) => any;
   onLoggedIn?: (incomingMessage: IncomingMessage) => any;
   onLoggedOut?: (incomingMessage: IncomingMessage) => any;
@@ -38,14 +39,14 @@ interface BodyParams {
   hashed?: boolean;
 }
 
-class Restivus {
+class MakaRest {
   readonly _routes: Route[];
-  readonly _config: RestivusOptions;
-  public rateLimiter?: RateLimiterMemory | RateLimiterRedis;
+  readonly _config: MakaRestOptions;
+  readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
   request: Request;
   response: Response;
 
-  constructor(options: Partial<RestivusOptions>) {
+  constructor(options: Partial<MakaRestOptions>) {
     this._routes = [];
     this._config = {
       paths: [],
@@ -102,6 +103,13 @@ class Restivus {
       }
 
       Object.assign(this._config.defaultHeaders, corsHeaders);
+
+      if (!this._config.defaultOptionsEndpoint) {
+        this._config.defaultOptionsEndpoint = () => {
+          this.response.writeHead(200, this._config.defaultHeaders);
+          this.response.end();
+        };
+      }
     }
   }
 
@@ -227,4 +235,5 @@ class Restivus {
   }
 }
 
-export { Restivus, Codes };
+export default MakaRest;
+export { MakaRest as Restivus, Codes };
