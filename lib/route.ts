@@ -85,7 +85,7 @@ class Route {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
         JsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
-          if (this.api._config.rateLimiterOptions) {
+          if (this.api._config.rateLimitOptions) {
             // Rate limiting logic
             try {
               const key = this.api._config.rateLimitOptions.keyGenerator

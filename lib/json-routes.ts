@@ -131,7 +131,7 @@ class JsonRoutes {
             }
           } else {
             res.statusCode = 404;
-            instance.writeJsonToBody(res, { error: 'Not Found' });
+            instance.writeJsonToBody(res, 'Not Found');
             res.end();
           }
         });
