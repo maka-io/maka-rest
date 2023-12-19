@@ -142,7 +142,8 @@ class MakaRest {
     // Existing code to initialize specific wildcard routes
     if (!this._config.paths.includes('/')) {
       this.addRoute('/', { onRoot: true }, { get: () => Codes.success200('API Root') });
-      this.addRoute('/', {}, { get: () => Codes.success200(`API ${this._config.apiPath} ${this._config.version} Root`) });
+      const prettyPrintPath = this._config.apiPath ? this._config.apiPath + ' ' : '';
+      this.addRoute('/', {}, { get: () => Codes.success200(`API ${prettyPrintPath}${this._config.version} Root`.trim()) });
     }
 
     if (!this._config.paths.includes('*')) {
