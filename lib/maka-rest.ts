@@ -45,6 +45,7 @@ class MakaRest {
   readonly _config: MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
   readonly partialApiPath: string;
+  static defaultAuthInitialized = false; // Static property to track auth initialization
   request: Request;
   response: Response;
 
@@ -87,11 +88,53 @@ class MakaRest {
       }
     }
 
+    const settings = MakaRest.Settings.getInstance();
+
+    if (options.isRoot) {
+      if (settings.isRootInstanceCreated()) {
+        throw new Error('MAKA REST: Only one root instance is allowed');
+      }
+      settings.setRootInstanceCreated(true);
+    }
+
     this.configureCors();
     this.partialApiPath = this.normalizeApiPath(this._config);
-    this.initializeDefaultAuthEndpoints();
+    // Initialize default auth endpoints only if they haven't been initialized before
+
+    if (options.isRoot && options.useDefaultAuth && !settings.isDefaultAuthInitialized()) {
+      this.initializeDefaultAuthEndpoints();
+      settings.setDefaultAuthInitialized(true);
+    }
     this.initializeWildcardRoutes();
   }
+
+  // Private singleton class for managing settings
+  static Settings = (function() {
+    let instance;
+
+    function createInstance() {
+      let defaultAuthInitialized = false;
+      let rootInstanceCreated = false;
+      // Other shared settings...
+
+      return {
+        isDefaultAuthInitialized: () => defaultAuthInitialized,
+        isRootInstanceCreated: () => rootInstanceCreated,
+        setDefaultAuthInitialized: (value) => { defaultAuthInitialized = value; },
+        setRootInstanceCreated: (value) => { rootInstanceCreated = value; },
+        // Other methods for managing settings...
+      };
+    }
+
+    return {
+      getInstance: function() {
+        if (!instance) {
+          instance = createInstance();
+        }
+        return instance;
+      }
+    };
+  })();
 
   private configureCors(): void {
     if (this._config.enableCors) {
@@ -133,9 +176,7 @@ class MakaRest {
   }
 
   private initializeDefaultAuthEndpoints(): void {
-    if (this._config.useDefaultAuth) {
-      this._initAuth();
-    }
+    this._initAuth();
   }
 
   private initializeWildcardRoutes(): void {
@@ -189,8 +230,6 @@ class MakaRest {
           const extra = this._config.onLoggedIn?.call(this, incomingMessage);
           return extra ? { ...Codes.success200(auth), extra } : Codes.success200(auth);
         }
-
-        console.log(auth);
 
         const extra = this._config.onLoginFailure?.call(this, incomingMessage);
         if (auth.error) {
