@@ -42,7 +42,7 @@ class Route {
 
   constructor(api: any, path: string, options: RouteOptions, endpoints: { [method: string]: EndpointOptions }) {
     this.api = api;
-    this.path = path;
+    this.path = path ?? api._config.apiPath ?? ''; // Use apiPath as default if path is null
     this.options = options || {};
     this.endpoints = endpoints || this.options;
     this.jsonRoutes = JsonRoutes.getInstance();
@@ -80,7 +80,15 @@ class Route {
 
     this.api._config.paths.push(this.path);
 
-    const fullPath = onRoot ? `${this.api._config.apiRoot}/${this.path}`.replace(/\/+/g, '/') :`${this.api.partialApiPath}/${this.path}`.replace(/\/+/g, '/');
+    if (this.path === '') {
+      if (onRoot) {
+        throw new Error('Cannot add a root route without a specific path');
+      }
+      this.path = '/';
+    }
+
+    const fullPath = onRoot ? `${this.api._config.apiRoot}/${this.path}`.replace(/\/+/g, '/') : `${this.api.partialApiPath}/${this.path}`.replace(/\/+/g, '/');
+
     for (const method of Object.keys(this.endpoints)) {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
