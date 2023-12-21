@@ -82,18 +82,33 @@ class JsonRoutes {
     }
   }
 
-  private matchRoute(req: Request) {
+  private matchRoute(req: Request): RouteHandler | undefined {
     return this.routes.find(route => {
       const isMethodMatch = route.method.toUpperCase() === req.method;
 
-      // Extract the path without query parameters
-      const pathWithoutQuery = req.url.split('?')[0];
+      // Split paths into segments for comparison
+      const routeSegments = route.path.split('/');
+      const reqSegments = req.url.split('/');
 
-      // Normalize paths to ensure consistency in matching
-      const normalizedReqPath = this.normalizePath(pathWithoutQuery);
-      const normalizedRoutePath = this.normalizePath(route.path);
+      // Check for dynamic segments and extract params
+      let isPathMatch = routeSegments.length === reqSegments.length;
+      const params: any = {};
+      if (isPathMatch) {
+        routeSegments.forEach((seg: string, i) => {
+          if (seg.startsWith(':')) {
+            params[seg.substring(1)] = reqSegments[i];
+          } else if (seg !== reqSegments[i]) {
+            isPathMatch = false;
+          }
+        });
+      }
 
-      const isPathMatch = normalizedReqPath === normalizedRoutePath;
+      if (isPathMatch) {
+        req.params = { ...req.params, ...params };
+      }
+
+      req.route = route.path;
+
       return isMethodMatch && isPathMatch;
     });
   }
