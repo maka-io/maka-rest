@@ -155,7 +155,7 @@ class JsonRoutes {
       }
     } else {
       res.statusCode = 404;
-      this.writeJsonToBody(res, { error: 'Not Found' });
+      this.writeJsonToBody(res, 'Not Found');
       res.end();
     }
   }
