@@ -1,14 +1,15 @@
 import { WebApp } from 'meteor/webapp';
-import { Request, Response, NextFunction } from 'express';
+import { IncomingMessage, ServerResponse } from 'http';
+import { parse } from 'url';
 
 interface RouteHandler {
   method: string;
   path: string;
-  handler: (req: Request, res: Response, next: NextFunction) => void;
+  handler: (req: IncomingMessage, res: ServerResponse) => void;
 }
 
 interface Middleware {
-  (req: Request, res: Response, next: NextFunction): void;
+  (req: IncomingMessage, res: ServerResponse, next: Function): void;
 }
 
 class JsonRoutes {
@@ -21,12 +22,8 @@ class JsonRoutes {
     Pragma: 'no-cache',
   };
 
-  // Make the constructor private
-  private constructor() {
-    // Initialize instance properties if needed
-  }
+  private constructor() {}
 
-  // Public static method to access the instance
   public static getInstance(): JsonRoutes {
     if (!JsonRoutes.instance) {
       JsonRoutes.instance = new JsonRoutes();
@@ -34,7 +31,7 @@ class JsonRoutes {
     return JsonRoutes.instance;
   }
 
-  public static add(method: string, path: string, handler: (req: Request, res: Response, next: NextFunction) => void) {
+  public static add(method: string, path: string, handler: (req: IncomingMessage, res: ServerResponse) => void) {
     const instance = JsonRoutes.getInstance();
     if (path[0] !== '/') {
       path = '/' + path;
@@ -57,7 +54,7 @@ class JsonRoutes {
     instance.responseHeaders = headers;
   }
 
-  public static sendResult(res: Response, options: { code?: number; headers?: Record<string, string>; data?: any }) {
+  public static sendResult(res: ServerResponse, options: { code?: number; headers?: Record<string, string>; data?: any }) {
     const instance = JsonRoutes.getInstance();
     options = options || {};
     if (options.headers) {
@@ -68,13 +65,13 @@ class JsonRoutes {
     res.end();
   }
 
-  private setHeaders(res: Response, headers: Record<string, string>) {
+  private setHeaders(res: ServerResponse, headers: Record<string, string>) {
     Object.entries(headers).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
   }
 
-  private writeJsonToBody(res: Response, json: any) {
+  private writeJsonToBody(res: ServerResponse, json: any) {
     if (json !== undefined) {
       const shouldPrettyPrint = process.env.NODE_ENV === 'development';
       res.setHeader('Content-type', 'application/json');
@@ -82,87 +79,105 @@ class JsonRoutes {
     }
   }
 
-  private matchRoute(req: Request): RouteHandler | undefined {
+  private matchRoute(req: IncomingMessage): RouteHandler | undefined {
+    const parsedUrl = parse(req.url || '', true);
+    const path = parsedUrl.pathname || '';
+
     return this.routes.find(route => {
-      const isMethodMatch = route.method.toUpperCase() === req.method;
+      const isMethodMatch = route.method.toUpperCase() === req.method?.toUpperCase();
+      const routeSegments = route.path.split('/').filter(seg => seg.length);
+      const pathSegments = path.split('/').filter(seg => seg.length);
 
-      // Function to normalize a path by removing trailing slash if present
-      const normalizePath = (path: string) => (path.endsWith('/') && path !== '/') ? path.slice(0, -1) : path;
-
-      // Normalize paths for comparison
-      const normalizedRoutePath = normalizePath(route.path);
-      const normalizedReqPath = normalizePath(req.url);
-
-      // Split normalized paths into segments for comparison
-      const routeSegments = normalizedRoutePath.split('/');
-      const reqSegments = normalizedReqPath.split('/');
-
-      // Check for dynamic segments and extract params
-      let isPathMatch = routeSegments.length === reqSegments.length;
-      const params: any = {};
-      if (isPathMatch) {
-        for (let i = 0; i < routeSegments.length; i++) {
-          if (routeSegments[i].startsWith(':')) {
-            params[routeSegments[i].substring(1)] = reqSegments[i];
-          } else if (routeSegments[i] !== reqSegments[i]) {
-            isPathMatch = false;
-            break; // Exit loop early if a segment does not match
-          }
-        }
+      if (routeSegments.length !== pathSegments.length) {
+        return false;
       }
 
-      // Assign extracted parameters to the request object
-      if (isPathMatch) {
-        req.params = { ...req.params, ...params };
-        req.route = normalizedRoutePath; // Assign the normalized route path to the request object
-      }
+      const isPathMatch = routeSegments.every((seg, i) => {
+        return seg.startsWith(':') || seg === pathSegments[i];
+      });
+
+      // Optional: Extract dynamic segments as params (like Express)
+      // If needed, add logic here to extract and assign params to the request object
 
       return isMethodMatch && isPathMatch;
     });
   }
 
-
-  // Helper function to normalize paths by removing trailing slash if present
-  private normalizePath(path: string): string {
-    // Remove a trailing slash if it exists, except for the root path '/'
-    return (path !== '/') ? path.replace(/\/$/, '') : path;
+  private async parseJsonBody(req: IncomingMessage): Promise<any> {
+    return new Promise((resolve, reject) => {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString(); // Convert Buffer to string
+      });
+      req.on('end', () => {
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          reject(e);
+        }
+      });
+      req.on('error', (err) => {
+        reject(err);
+      });
+    });
   }
-  private processRequest(req: Request, res: Response, next: NextFunction) {
+
+
+  private async processRequest(req: IncomingMessage, res: ServerResponse) {
+    try {
+      // Parse JSON body
+      req.body = await this.parseJsonBody(req);
+    } catch (error) {
+      // noop
+      // if we can't parse the body, we'll just ignore it
+      // and let the endpoint handle it
+    }
     let index = 0;
     const nextMiddleware = () => {
       if (index < this.middlewares.length) {
         const middleware = this.middlewares[index++];
         middleware(req, res, nextMiddleware);
       } else {
-        next();
+        this.routeRequest(req, res);
       }
     };
     nextMiddleware();
   }
 
+  private routeRequest(req: IncomingMessage, res: ServerResponse) {
+    const route = this.matchRoute(req);
+    if (route) {
+      this.setHeaders(res, this.responseHeaders);
+      try {
+        route.handler(req, res);
+      } catch (error) {
+        this.handleError(error, res);
+      }
+    } else {
+      res.statusCode = 404;
+      this.writeJsonToBody(res, { error: 'Not Found' });
+      res.end();
+    }
+  }
+
+  private handleError(error: any, res: ServerResponse) {
+    res.statusCode = 500;
+    this.writeJsonToBody(res, { error: error.message || 'Internal Server Error' });
+    res.end();
+  }
+
   public static processRoutes(apiRoot: string) {
     const instance = JsonRoutes.getInstance();
-    WebApp.connectHandlers.use((req: Request, res: Response, next: NextFunction) => {
-      if (req.url.startsWith(`/${apiRoot}`)) {
-        instance.processRequest(req, res, () => {
-          const route = instance.matchRoute(req);
-          if (route) {
-            instance.setHeaders(res, instance.responseHeaders);
-            try {
-              route.handler(req, res, next);
-            } catch (error) {
-              next(error);
-            }
-          } else {
-            res.statusCode = 404;
-            instance.writeJsonToBody(res, 'Not Found');
-            res.end();
-          }
-        });
+    WebApp.connectHandlers.use((req: IncomingMessage, res: ServerResponse) => {
+
+      if (req.url && req.url.startsWith(`/${apiRoot}`)) {
+        instance.processRequest(req, res);
       } else {
-        next();
+        res.statusCode = 404;
+        res.end('Not Found');
       }
     });
+
     instance.errorMiddlewares.forEach(middleware => {
       WebApp.connectHandlers.use(middleware);
     });
@@ -170,3 +185,4 @@ class JsonRoutes {
 }
 
 export { JsonRoutes };
+
