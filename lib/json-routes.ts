@@ -86,32 +86,41 @@ class JsonRoutes {
     return this.routes.find(route => {
       const isMethodMatch = route.method.toUpperCase() === req.method;
 
-      // Split paths into segments for comparison
-      const routeSegments = route.path.split('/');
-      const reqSegments = req.url.split('/');
+      // Function to normalize a path by removing trailing slash if present
+      const normalizePath = (path: string) => (path.endsWith('/') && path !== '/') ? path.slice(0, -1) : path;
+
+      // Normalize paths for comparison
+      const normalizedRoutePath = normalizePath(route.path);
+      const normalizedReqPath = normalizePath(req.url);
+
+      // Split normalized paths into segments for comparison
+      const routeSegments = normalizedRoutePath.split('/');
+      const reqSegments = normalizedReqPath.split('/');
 
       // Check for dynamic segments and extract params
       let isPathMatch = routeSegments.length === reqSegments.length;
       const params: any = {};
       if (isPathMatch) {
-        routeSegments.forEach((seg: string, i) => {
-          if (seg.startsWith(':')) {
-            params[seg.substring(1)] = reqSegments[i];
-          } else if (seg !== reqSegments[i]) {
+        for (let i = 0; i < routeSegments.length; i++) {
+          if (routeSegments[i].startsWith(':')) {
+            params[routeSegments[i].substring(1)] = reqSegments[i];
+          } else if (routeSegments[i] !== reqSegments[i]) {
             isPathMatch = false;
+            break; // Exit loop early if a segment does not match
           }
-        });
+        }
       }
 
+      // Assign extracted parameters to the request object
       if (isPathMatch) {
         req.params = { ...req.params, ...params };
+        req.route = normalizedRoutePath; // Assign the normalized route path to the request object
       }
-
-      req.route = route.path;
 
       return isMethodMatch && isPathMatch;
     });
   }
+
 
   // Helper function to normalize paths by removing trailing slash if present
   private normalizePath(path: string): string {
