@@ -8,6 +8,7 @@ import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-l
 import { RedisClient } from 'redis';
 
 interface MakaRestOptions {
+  debug?: boolean;
   paths: string[];
   useDefaultAuth: boolean;
   apiRoot: string; // Root of the API, e.g., 'api'
@@ -52,6 +53,7 @@ class MakaRest {
   constructor(options: Partial<MakaRestOptions>) {
     this._routes = [];
     this._config = {
+      debug: false,
       paths: [],
       useDefaultAuth: false,
       apiRoot: 'api',

@@ -124,13 +124,24 @@ class Route {
 
           try {
             const responseData = await this._callEndpoint(endpointContext, endpoint);
-            // Add a debug line that logs out the request and response in a structured way
             if (responseData) {
               JsonRoutes.sendResult(res, {
                 code: responseData.statusCode,
                 headers: responseData.headers,
                 data: responseData.body
               });
+            }
+
+            // Add a debug line that logs out the request and response in a structured way
+            if (this.api._config.debug) {
+              console.log(`\n${method.toUpperCase()} ${fullPath}`);
+              console.log('Request:', {
+                urlParams: req.params,
+                queryParams: req.query,
+                bodyParams: req.body,
+                headers: req.headers
+              });
+              console.log('Response:', responseData);
             }
           } catch (error) {
             console.log(error);
