@@ -168,18 +168,26 @@ class JsonRoutes {
 
   public static processRoutes(apiRoot: string) {
     const instance = JsonRoutes.getInstance();
-    WebApp.connectHandlers.use((req: IncomingMessage, res: ServerResponse) => {
 
+    WebApp.connectHandlers.use((req: IncomingMessage, res: ServerResponse, next: Function) => {
+      // Ensure the URL starts with the apiRoot
       if (req.url && req.url.startsWith(`/${apiRoot}`)) {
         instance.processRequest(req, res);
       } else {
-        res.statusCode = 404;
-        res.end('Not Found');
+        // If not part of the apiRoot, just call next middleware in the stack
+        next();
       }
     });
 
+    // Apply error middlewares if any
     instance.errorMiddlewares.forEach(middleware => {
-      WebApp.connectHandlers.use(middleware);
+      WebApp.connectHandlers.use((req, res, next) => {
+        if (req.url && req.url.startsWith(`/${apiRoot}`)) {
+          middleware(req, res, next);
+        } else {
+          next();
+        }
+      });
     });
   }
 }
