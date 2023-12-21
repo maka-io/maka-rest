@@ -122,16 +122,16 @@ class JsonRoutes {
     });
   }
 
-
   private async processRequest(req: IncomingMessage, res: ServerResponse) {
+    // Attempt to parse JSON body, but do not halt on failure
     try {
-      // Parse JSON body
       req.body = await this.parseJsonBody(req);
     } catch (error) {
-      // noop
-      // if we can't parse the body, we'll just ignore it
-      // and let the endpoint handle it
+      // If parsing fails, req.body will remain undefined
+      // The error is silently ignored, allowing endpoints to handle it as needed
     }
+
+    // Continue with middleware processing and routing
     let index = 0;
     const nextMiddleware = () => {
       if (index < this.middlewares.length) {
