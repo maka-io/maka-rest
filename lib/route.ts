@@ -128,7 +128,7 @@ class Route {
               JsonRoutes.sendResult(res, {
                 code: responseData.statusCode,
                 headers: responseData.headers,
-                data: responseData.body
+                data: responseData.data
               });
             }
 
@@ -145,6 +145,11 @@ class Route {
             }
           } catch (error) {
             console.log(error);
+            JsonRoutes.sendResult(res, {
+              code: 500,
+              data: 'Server Error',
+              headers: res.headers
+            });
           }
         });
       }
@@ -176,7 +181,12 @@ class Route {
     const auth = await this._authAccepted(endpointContext, endpoint);
     if (auth.success) {
       if (this._roleAccepted(endpointContext, endpoint)) {
-        return await endpoint.action(endpointContext);
+        const endpointResponse = await endpoint.action(endpointContext);
+        // if endpointResponse doesnt contain a statusCode or data, throw an error
+        if (!endpointResponse.statusCode || !endpointResponse.data) {
+          throw new Error('Endpoint response must contain a statusCode and data');
+        }
+        return endpointResponse;
       } else {
         return Codes.forbidden403();
       }

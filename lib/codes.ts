@@ -4,7 +4,7 @@ import { StatusCodes, getReasonPhrase } from 'http-status-codes';
 export interface StatusResponse {
   statusCode: number;
   status: string;
-  body: any;
+  data: any;
   headers?: Record<string, string>;
   extra?: any;
 }
@@ -26,9 +26,10 @@ class Codes {
     const response: StatusResponse = {
       statusCode,
       status: getReasonPhrase(statusCode),
-      body,
+      data: body,
       headers: headers || {}
     };
+
     if (extra) {
       response.extra = extra;
     }

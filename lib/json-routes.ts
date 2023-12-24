@@ -62,6 +62,7 @@ class JsonRoutes {
     }
     res.statusCode = options.code || 200;
     instance.writeJsonToBody(res, options.data);
+
     res.end();
   }
 
