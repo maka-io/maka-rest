@@ -182,6 +182,10 @@ class Route {
     if (auth.success) {
       if (this._roleAccepted(endpointContext, endpoint)) {
         const endpointResponse = await endpoint.action(endpointContext);
+        if (!endpointResponse) {
+          return Codes.noContent204();
+        }
+
         // if endpointResponse doesnt contain a statusCode or data, throw an error
         if (!endpointResponse.statusCode || !endpointResponse.data) {
           throw new Error('Endpoint response must contain a statusCode and data');

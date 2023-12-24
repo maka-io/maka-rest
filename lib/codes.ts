@@ -72,7 +72,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static success205(body = 'No Content', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static noContent204(body = null, extra?: any, headers?: Record<string, string>): StatusResponse {
     return this.generateResponse(StatusCodes.RESET_CONTENT, body, extra, headers);
   }
 

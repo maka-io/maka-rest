@@ -60,6 +60,7 @@ class JsonRoutes {
     if (options.headers) {
       instance.setHeaders(res, options.headers);
     }
+
     res.statusCode = options.code || 200;
     instance.writeJsonToBody(res, options.data);
 
@@ -73,6 +74,10 @@ class JsonRoutes {
   }
 
   private writeJsonToBody(res: ServerResponse, json: any) {
+    if (res.headersSent) {
+      return;
+    }
+
     if (json !== undefined) {
       const shouldPrettyPrint = process.env.NODE_ENV === 'development';
       res.setHeader('Content-type', 'application/json');
