@@ -34,13 +34,6 @@ interface MakaRestOptions {
     };
 }
 
-interface BodyParams {
-  username?: string;
-  email?: string;
-  password: string;
-  hashed?: boolean;
-}
-
 class MakaRest {
   readonly _routes: Route[];
   readonly _config: MakaRestOptions;
@@ -49,6 +42,27 @@ class MakaRest {
   static defaultAuthInitialized = false; // Static property to track auth initialization
   request: Request;
   response: Response;
+
+  // Type for interceptor function
+  static interceptorType = (req: IncomingMessage, res: Response, next: Function) => {};
+
+  // Static property to store interceptors
+  static interceptors: Array<typeof MakaRest.interceptorType> = [];
+
+  // Static method to add an interceptor
+  static addInterceptor(interceptor: typeof MakaRest.interceptorType) {
+    MakaRest.interceptors.push(interceptor);
+  }
+
+  // Static method to execute interceptors
+  static executeInterceptors(req: IncomingMessage, res: Response, next: Function, index = 0) {
+    if (index < MakaRest.interceptors.length) {
+      const interceptor = MakaRest.interceptors[index];
+      interceptor(req, res, () => MakaRest.executeInterceptors(req, res, next, index + 1));
+    } else {
+      next(); // Continue to the next middleware/handler
+    }
+  }
 
   constructor(options: Partial<MakaRestOptions>) {
     this._routes = [];
@@ -99,6 +113,11 @@ class MakaRest {
       settings.setRootInstanceCreated(true);
     }
 
+    // Example of using executeInterceptors in a route
+    WebApp.connectHandlers.use((req, res, next) => {
+      MakaRest.executeInterceptors(req, res, next);
+    });
+
     this.configureCors();
     this.partialApiPath = this.normalizeApiPath(this._config);
     // Initialize default auth endpoints only if they haven't been initialized before
@@ -107,7 +126,15 @@ class MakaRest {
       this.initializeDefaultAuthEndpoints();
       settings.setDefaultAuthInitialized(true);
     }
+
+    if (!options.isRoot && options.useDefaultAuth) {
+      if (Meteor.isDevelopment) {
+        console.warn('MAKA REST: Default auth endpoints can only be initialized on the root instance');
+      }
+    }
+
     this.initializeWildcardRoutes();
+
   }
 
   // Private singleton class for managing settings
@@ -212,8 +239,8 @@ class MakaRest {
       post: async (incomingMessage: IncomingMessage) => { // Replace with proper types
         const { bodyParams } = incomingMessage;
 
-        const user = this._extractUser(bodyParams) as Meteor.User;
-        const auth = await Auth.loginWithPassword(user, this._extractPassword(bodyParams));
+        const user = Auth.extractUser(bodyParams) as Meteor.User;
+        const auth = await Auth.loginWithPassword(user, Auth.extractPassword(bodyParams));
         if (auth.userId && auth.authToken) {
           const searchQuery = { [this._config.auth.token]: Accounts._hashLoginToken(auth.authToken) };
           const user = await Meteor.users.findOneAsync({ '_id': auth.userId }, searchQuery);
@@ -236,20 +263,6 @@ class MakaRest {
 
     this.addRoute('logout', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logout(incomingMessage) });
     this.addRoute('logoutAll', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logoutAll(incomingMessage) });
-  }
-
-  private _extractUser(body: BodyParams): Partial<Meteor.User> {
-    if (body.username) {
-      return { username: body.username };
-    } else if (body.email) {
-      return { emails: [{ address: body.email, verified: false }] };
-    } else {
-      throw new Error('Username or email must be provided');
-    }
-  }
-
-  private _extractPassword(body: BodyParams): string | { digest: string; algorithm: string } {
-    return body.hashed ? { digest: body.password, algorithm: 'sha-256' } : body.password;
   }
 
   private async _logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {

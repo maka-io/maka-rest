@@ -9,7 +9,7 @@ import { Accounts } from 'meteor/accounts-base';
 // TODO: Move these to the typings
 interface Password {
   digest: string;
-  algorithm: "sha-256";
+  algorithm: string;
 }
 
 interface AuthToken {
@@ -17,6 +17,13 @@ interface AuthToken {
   userId: string;
   when: Date;
   error?: string;
+}
+
+interface BodyParams {
+  username?: string;
+  email?: string;
+  password: string;
+  hashed?: boolean;
 }
 
 /**
@@ -123,6 +130,20 @@ class Auth {
     }
 
     throw new Error('Cannot create selector from invalid user');
+  }
+
+  static extractUser(body: BodyParams): Partial<Meteor.User> {
+    if (body.username) {
+      return { username: body.username };
+    } else if (body.email) {
+      return { emails: [{ address: body.email, verified: false }] };
+    } else {
+      throw new Error('Username or email must be provided');
+    }
+  }
+
+  static extractPassword(body: BodyParams): string | { digest: string; algorithm: string } {
+    return body.hashed ? { digest: body.password, algorithm: 'sha-256' } : body.password;
   }
 }
 
