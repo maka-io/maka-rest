@@ -1,4 +1,5 @@
 import { Meteor } from 'meteor/meteor';
+import { WebApp } from 'meteor/webapp';
 import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
@@ -7,10 +8,11 @@ import { Request, Response, IncomingMessage } from 'express';
 import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
 import { RedisClient } from 'redis';
 
+type LoginType = 'default' | null;
+
 interface MakaRestOptions {
   debug?: boolean;
   paths: string[];
-  useDefaultAuth: boolean;
   apiRoot: string; // Root of the API, e.g., 'api'
   apiPath?: string; // Additional path after the version, required unless isRoot is true
   version: string; // API version, e.g., 'v1'
@@ -23,9 +25,6 @@ interface MakaRestOptions {
   defaultHeaders: Record<string, string>;
   enableCors: boolean;
   defaultOptionsEndpoint?: () => void;
-  onLoginFailure?: (req: Request) => any;
-  onLoggedIn?: (incomingMessage: IncomingMessage) => any;
-  onLoggedOut?: (incomingMessage: IncomingMessage) => any;
   rateLimitOptions?: IRateLimiterOptions
     & {
       useRedis?: boolean;
@@ -64,16 +63,19 @@ class MakaRest {
     }
   }
 
-  static onLoggedIn: (req: IncomingMessage) => void;
-  static onLoggedOut: (req: IncomingMessage) => void;
-  static onLoginFailure: (req: IncomingMessage, reason?: string) => void;
+  // Static auth object to hold event listeners
+  static auth = {
+    loginType: null as LoginType,
+    onLoggedIn: (req: IncomingMessage) => {},
+    onLoggedOut: (req: IncomingMessage) => {},
+    onLoginFailure: (req: IncomingMessage, reason?: string) => {}
+  };
 
   constructor(options: Partial<MakaRestOptions>) {
     this._routes = [];
     this._config = {
       debug: false,
       paths: [],
-      useDefaultAuth: false,
       apiRoot: 'api',
       version: 'v1',
       prettyJson: false,
@@ -226,16 +228,18 @@ class MakaRest {
   }
 
   private initializeDefaultAuthEndpoints(): void {
-    this.addRoute('login', { onRoot: true, authRequired: false }, {
-      post: async (incomingMessage: IncomingMessage) => { return await this.login(incomingMessage) }
-    });
+    if (MakaRest.auth.loginType === 'default') {
+      this.addRoute('login', { onRoot: true, authRequired: false }, {
+        post: async (incomingMessage: IncomingMessage) => { return await this.login(incomingMessage) }
+      });
 
-    this.addRoute('logout', { onRoot: true, authRequired: true }, {
-      post: async (incomingMessage: IncomingMessage) => await this.logout(incomingMessage)
-    });
-    this.addRoute('logoutAll', { onRoot: true, authRequired: true }, {
-      post: async (incomingMessage: IncomingMessage) => await this.logoutAll(incomingMessage)
-    });
+      this.addRoute('logout', { onRoot: true, authRequired: true }, {
+        post: async (incomingMessage: IncomingMessage) => await this.logout(incomingMessage)
+      });
+      this.addRoute('logoutAll', { onRoot: true, authRequired: true }, {
+        post: async (incomingMessage: IncomingMessage) => await this.logoutAll(incomingMessage)
+      });
+    }
   }
 
   private async login(incomingMessage: IncomingMessage): Promise<StatusResponse> { // Replace with proper types
@@ -247,23 +251,20 @@ class MakaRest {
       const searchQuery = { [this._config.auth.token]: Accounts._hashLoginToken(auth.authToken) };
       const user = await Meteor.users.findOneAsync({ '_id': auth.userId }, searchQuery);
       if (!user) {
-        MakaRest.onLoginFailure?.(incomingMessage, 'Error attempting login');
-        const extra = this._config.onLoginFailure?.call(this, incomingMessage);
-        return Codes.badRequest400({ message: 'Error attempting login', ...extra })
+        MakaRest.auth.onLoginFailure?.(incomingMessage, 'Error attempting login');
+        return Codes.badRequest400('Error attempting login')
       }
-      MakaRest.onLoggedIn?.(incomingMessage);
       Object.assign(incomingMessage, { user });
-      const extra = this._config.onLoggedIn?.call(this, incomingMessage);
-      return extra ? { ...Codes.success200(auth), extra } : Codes.success200(auth);
+      MakaRest.auth.onLoggedIn?.(incomingMessage);
+      return Codes.success200(auth);
     }
 
-    MakaRest.onLoginFailure?.(incomingMessage, 'Error attempting login');
-    const extra = this._config.onLoginFailure?.call(this, incomingMessage);
+    MakaRest.auth.onLoginFailure?.(incomingMessage, 'Error attempting login');
     if (auth.error) {
-      return Codes.unauthorized401({ error: auth.error, ...extra });
+      return Codes.unauthorized401(auth.error);
     }
 
-    return Codes.badRequest400({ message: 'Error attempting login', ...extra });
+    return Codes.badRequest400('Error attempting login');
   }
 
   private async logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {
@@ -283,9 +284,8 @@ class MakaRest {
     );
 
     // Call the logout hook if it's defined
-    MakaRest.onLoggedOut?.(incomingMessage);
-    const extra = this._config.onLoggedOut?.call(this, incomingMessage);
-    return extra ? { ...Codes.success200('Logged out successfully'), extra } : Codes.success200('Logged out successfully');
+    MakaRest.auth.onLoggedOut?.(incomingMessage);
+    return Codes.success200('Logged out successfully');
   }
 
   private async logoutAll(incomingMessage: IncomingMessage): Promise<StatusResponse> {
@@ -294,9 +294,8 @@ class MakaRest {
     await Meteor.users.updateAsync(user._id, { $set: { 'services.resume.loginTokens': [] } });
 
     // Call the logout hook if it's defined
-    MakaRest.onLoggedOut?.(incomingMessage);
-    const extra = this._config.onLoggedOut?.call(this, incomingMessage);
-    return extra ? { ...Codes.success200('Logged out from all devices successfully'), extra } : Codes.success200('Logged out from all devices successfully');
+    MakaRest.auth.onLoggedOut?.(incomingMessage);
+    return Codes.success200('Logged out from all devices successfully');
   }
 }
 
