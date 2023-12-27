@@ -128,15 +128,9 @@ class MakaRest {
     this.partialApiPath = this.normalizeApiPath(this._config);
     // Initialize default auth endpoints only if they haven't been initialized before
 
-    if (options.isRoot && options.useDefaultAuth && !settings.isDefaultAuthInitialized()) {
+    if (!settings.isDefaultAuthInitialized()) {
       this.initializeDefaultAuthEndpoints();
       settings.setDefaultAuthInitialized(true);
-    }
-
-    if (!options.isRoot && options.useDefaultAuth) {
-      if (Meteor.isDevelopment) {
-        console.warn('MAKA REST: Default auth endpoints can only be initialized on the root instance');
-      }
     }
 
     this.initializeWildcardRoutes();
@@ -145,7 +139,7 @@ class MakaRest {
 
   // Private singleton class for managing settings
   static Settings = (function() {
-    let instance;
+    let instance: any;
 
     function createInstance() {
       let defaultAuthInitialized = false;
@@ -178,7 +172,7 @@ class MakaRest {
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
       };
 
-      if (this._config.useDefaultAuth) {
+      if (MakaRest.auth.loginType === 'default') {
         corsHeaders['Access-Control-Allow-Headers'] += ', Authorization, X-Auth-Token';
       }
 
