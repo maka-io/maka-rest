@@ -204,10 +204,6 @@ class MakaRest {
     return partialApiPath;
   }
 
-  private initializeDefaultAuthEndpoints(): void {
-    this._initAuth();
-  }
-
   private initializeWildcardRoutes(): void {
     if (!this._config.paths.includes('*')) {
       this.addRoute('*', {}, { get: () => Codes.notFound404() });
@@ -225,16 +221,7 @@ class MakaRest {
     route.addToApi(options?.onRoot);
   }
 
-  private _validateUser(user: Meteor.User, password: string): boolean {
-    if (!user.services || !user.services.password) {
-      throw new Error('User has no password set');
-    }
-
-    const resultOfInvocation = Accounts._checkPassword(user, password);
-    return !resultOfInvocation.error;
-  }
-
-  private _initAuth(): void {
+  private initializeDefaultAuthEndpoints(): void {
     this.addRoute('login', { onRoot: true, authRequired: false }, {
       post: async (incomingMessage: IncomingMessage) => { // Replace with proper types
         const { bodyParams } = incomingMessage;
@@ -261,11 +248,11 @@ class MakaRest {
       }
     });
 
-    this.addRoute('logout', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logout(incomingMessage) });
-    this.addRoute('logoutAll', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this._logoutAll(incomingMessage) });
+    this.addRoute('logout', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this.logout(incomingMessage) });
+    this.addRoute('logoutAll', { onRoot: true, authRequired: true }, { post: async (incomingMessage: IncomingMessage) => await this.logoutAll(incomingMessage) });
   }
 
-  private async _logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {
+  private async logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {
     const { user, request } = incomingMessage;
     // Extract the auth token from the request headers
     const authToken = request.headers['x-auth-token'] || this.request.headers['X-Auth-Token'];
@@ -286,7 +273,7 @@ class MakaRest {
     return extra ? { ...Codes.success200('Logged out successfully'), extra } : Codes.success200('Logged out successfully');
   }
 
-  private async _logoutAll(incomingMessage: IncomingMessage): Promise<StatusResponse> {
+  private async logoutAll(incomingMessage: IncomingMessage): Promise<StatusResponse> {
     const { user } = incomingMessage;
     // Clear all tokens from the user's account
     await Meteor.users.updateAsync(user._id, { $set: { 'services.resume.loginTokens': [] } });
