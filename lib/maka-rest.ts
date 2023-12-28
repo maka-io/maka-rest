@@ -5,16 +5,15 @@ import { Route } from './route';
 import { Auth } from './auth';
 import Codes from './codes';
 import { Request, Response, IncomingMessage } from 'express';
-import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
+import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
 
 import {
-  MakaRest as IMakaRest
+  MakaRest as IMakaRest,
   Codes as ICodes
 } from '@maka/types';
 
 
-
-class MakaRest implements IMakaRest {
+class MakaRest implements: IMakaRest.IMakaRest {
   readonly _routes: Route[];
   readonly _config: IMakaRest.MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
@@ -187,12 +186,12 @@ class MakaRest implements IMakaRest {
 
   private initializeWildcardRoutes(): void {
     if (!this._config.paths.includes('*')) {
-      this.addRoute('*', {}, { get: () => ICodes.notFound404() });
-      this.addRoute('*', { onRoot: true }, { get: () => ICodes.notFound404() });
+      this.addRoute('*', {}, { get: () => Codes.notFound404() });
+      this.addRoute('*', { onRoot: true }, { get: () => Codes.notFound404() });
     }
 
     // Add a catch-all route for any other request that includes the apiRoot
-    this.addRoute(`${this._config.apiRoot}/*`, {}, { get: () => ICodes.notFound404() });
+    this.addRoute(`${this._config.apiRoot}/*`, {}, { get: () => Codes.notFound404() });
   }
 
 
@@ -242,7 +241,7 @@ class MakaRest implements IMakaRest {
     return Codes.badRequest400('Error attempting login');
   }
 
-  private async logout(incomingMessage: IncomingMessage): Promise<StatusResponse> {
+  private async logout(incomingMessage: IncomingMessage): Promise<ICodes.StatusResponse> {
     const { user, request } = incomingMessage;
     // Extract the auth token from the request headers
     const authToken = request.headers['x-auth-token'] || this.request.headers['X-Auth-Token'];
@@ -263,7 +262,7 @@ class MakaRest implements IMakaRest {
     return Codes.success200('Logged out successfully');
   }
 
-  private async logoutAll(incomingMessage: IncomingMessage): Promise<StatusResponse> {
+  private async logoutAll(incomingMessage: IncomingMessage): Promise<ICodes.StatusResponse> {
     const { user } = incomingMessage;
     // Clear all tokens from the user's account
     await Meteor.users.updateAsync(user._id, { $set: { 'services.resume.loginTokens': [] } });
