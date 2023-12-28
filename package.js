@@ -8,6 +8,7 @@ Package.describe({
 Npm.depends({
   '@types/meteor': '2.9.7',
   '@types/express': '4.17.21',
+  '@maka/types': '1.1.5',
   'express': '4.18.2',
   'http-status-codes': '2.3.0',
   'rate-limiter-flexible': '4.0.0',
