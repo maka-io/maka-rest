@@ -1,13 +1,7 @@
 import { StatusCodes, getReasonPhrase } from 'http-status-codes';
-
-// TODO: move this to typings
-export interface StatusResponse {
-  statusCode: number;
-  status: string;
-  data: any;
-  headers?: Record<string, string>;
-  extra?: any;
-}
+import {
+  Codes as ICodes
+} from '@maka/types';
 
 /**
  * Class containing methods to generate structured HTTP responses.
@@ -22,8 +16,8 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns A structured response object.
    */
-  private static generateResponse(statusCode: number, body: any, extra?: any, headers?: Record<string, string>): StatusResponse {
-    const response: StatusResponse = {
+  private static generateResponse(statusCode: number, body: any, extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
+    const response: ICodes.StatusResponse = {
       statusCode,
       status: getReasonPhrase(statusCode),
       data: body,
@@ -42,7 +36,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static continue100(body = 'No Content', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static continue100(body = 'No Content', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.CONTINUE, body, extra, headers);
   }
 
@@ -52,7 +46,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static success200(body = {}, extra?: any, headers?: Record<string, string>): StatusResponse {
+  static success200(body = {}, extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.OK, body, extra, headers);
   }
 
@@ -62,7 +56,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static success201(body = 'Created', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static success201(body = 'Created', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.CREATED, body, extra, headers);
   }
 
@@ -72,7 +66,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static noContent204(body = null, extra?: any, headers?: Record<string, string>): StatusResponse {
+  static noContent204(body = null, extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.RESET_CONTENT, body, extra, headers);
   }
 
@@ -83,7 +77,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns A structured response object with 301 status.
    */
-  static movedPermanently301(redirectUrl: string, extra?: any, headers?: Record<string, string>): StatusResponse {
+  static movedPermanently301(redirectUrl: string, extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     headers = headers || {};
     headers['Location'] = redirectUrl;  // Setting the Location header for the redirect
 
@@ -95,7 +89,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static badRequest400(body = 'Bad Request', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static badRequest400(body = 'Bad Request', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.BAD_REQUEST, body, extra, headers);
   }
 
@@ -105,7 +99,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static unauthorized401(body = 'Unauthorized', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static unauthorized401(body = 'Unauthorized', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.UNAUTHORIZED, body, extra, headers);
   }
 
@@ -115,7 +109,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static forbidden403(body = 'Forbidden', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static forbidden403(body = 'Forbidden', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.FORBIDDEN, body, extra, headers);
   }
 
@@ -125,7 +119,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static notFound404(body = 'Not Found', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static notFound404(body = 'Not Found', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.NOT_FOUND, body, extra, headers);
   }
 
@@ -135,7 +129,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static notAllowed405(body = 'Not Allowed', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static notAllowed405(body = 'Not Allowed', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.METHOD_NOT_ALLOWED, body, extra, headers);
   }
 
@@ -145,7 +139,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static unsupported415(body = 'Unsupported', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static unsupported415(body = 'Unsupported', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.UNSUPPORTED_MEDIA_TYPE, body, extra, headers);
   }
 
@@ -156,7 +150,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns A structured response object with 418 status.
    */
-  static teapot418(body = "I'm a teapot", extra?: any, headers?: Record<string, string>): StatusResponse {
+  static teapot418(body = "I'm a teapot", extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.IM_A_TEAPOT, body, extra, headers);
   }
 
@@ -166,7 +160,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static serverError500(body = 'Server Error', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static serverError500(body = 'Server Error', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.INTERNAL_SERVER_ERROR, body, extra, headers);
   }
 
@@ -176,7 +170,7 @@ class Codes {
    * @param headers - Optional HTTP headers.
    * @returns StatusResponse structured response object.
    */
-  static tooManyRequests429(body = 'Too Many Requests', extra?: any, headers?: Record<string, string>): StatusResponse {
+  static tooManyRequests429(body = 'Too Many Requests', extra?: any, headers?: Record<string, string>): ICodes.StatusResponse {
     return this.generateResponse(StatusCodes.TOO_MANY_REQUESTS, body, extra, headers);
   }
 }

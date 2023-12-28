@@ -3,41 +3,20 @@ import { WebApp } from 'meteor/webapp';
 import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
-import Codes, { StatusResponse } from './codes';
+import Codes from './codes';
 import { Request, Response, IncomingMessage } from 'express';
 import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
-import { RedisClientType } from '@redis/client';
 
-type LoginType = 'default' | null;
-
-interface MakaRestOptions {
-  debug?: boolean;
-  paths: string[];
-  apiRoot: string; // Root of the API, e.g., 'api'
-  apiPath?: string; // Additional path after the version, required unless isRoot is true
-  version: string; // API version, e.g., 'v1'
-  isRoot?: boolean; // If true, this instance represents the root of the API
-  prettyJson: boolean;
-  auth: {
-    token: string;
-    user: (http: IncomingMessage) => { token?: string };
-  };
-  defaultHeaders: Record<string, string>;
-  enableCors: boolean;
-  defaultOptionsEndpoint?: () => Route.RouteOptions;
-  rateLimitOptions?: IRateLimiterOptions
-    & {
-      useRedis?: boolean;
-      redis?: RedisClientType;
-      keyGenerator?: (req: Request) => string;
-    };
-}
+import {
+  MakaRest as IMakaRest
+  Codes as ICodes
+} from '@maka/types';
 
 
 
-class MakaRest {
+class MakaRest implements IMakaRest {
   readonly _routes: Route[];
-  readonly _config: MakaRestOptions;
+  readonly _config: IMakaRest.MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
   readonly partialApiPath: string;
   static defaultAuthInitialized = false; // Static property to track auth initialization
@@ -67,13 +46,13 @@ class MakaRest {
 
   // Static auth object to hold event listeners
   static auth = {
-    loginType: null as LoginType,
+    loginType: null as IMakaRest.LoginType,
     onLoggedIn: (req: IncomingMessage) => {},
     onLoggedOut: (req: IncomingMessage) => {},
     onLoginFailure: (req: IncomingMessage, reason?: string) => {}
   };
 
-  constructor(options: Partial<MakaRestOptions>) {
+  constructor(options: Partial<IMakaRest.MakaRestOptions>) {
     this._routes = [];
     this._config = {
       debug: false,
@@ -208,12 +187,12 @@ class MakaRest {
 
   private initializeWildcardRoutes(): void {
     if (!this._config.paths.includes('*')) {
-      this.addRoute('*', {}, { get: () => Codes.notFound404() });
-      this.addRoute('*', { onRoot: true }, { get: () => Codes.notFound404() });
+      this.addRoute('*', {}, { get: () => ICodes.notFound404() });
+      this.addRoute('*', { onRoot: true }, { get: () => ICodes.notFound404() });
     }
 
     // Add a catch-all route for any other request that includes the apiRoot
-    this.addRoute(`${this._config.apiRoot}/*`, {}, { get: () => Codes.notFound404() });
+    this.addRoute(`${this._config.apiRoot}/*`, {}, { get: () => ICodes.notFound404() });
   }
 
 
@@ -238,7 +217,7 @@ class MakaRest {
     }
   }
 
-  private async login(incomingMessage: IncomingMessage): Promise<StatusResponse> { // Replace with proper types
+  private async login(incomingMessage: IncomingMessage): Promise<ICodes.StatusResponse> { // Replace with proper types
     const { bodyParams } = incomingMessage;
 
     const user = Auth.extractUser(bodyParams) as Meteor.User;

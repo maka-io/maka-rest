@@ -6,30 +6,15 @@
 import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 
-// TODO: Move these to the typings
-interface Password {
-  digest: string;
-  algorithm: 'sha-256';
-}
+import {
+  Auth as IAuth
+} from '@maka/types';
 
-interface AuthToken {
-  authToken: string;
-  userId: string;
-  when: Date;
-  error?: string;
-}
-
-interface BodyParams {
-  username?: string;
-  email?: string;
-  password: string;
-  hashed?: boolean;
-}
 
 /**
  * Class handling authentication processes.
  */
-class Auth {
+class Auth implements IAuth {
   /**
    * Authenticates a user with a password.
    * @param user - Partial Meteor.User object.
@@ -37,7 +22,7 @@ class Auth {
    * @returns AuthToken object containing authToken, userId, and token creation time.
    * @throws AuthToken with an error if authentication fails.
    */
-  static async loginWithPassword(user: Partial<Meteor.User>, password: string | Password): Promise<AuthToken> {
+  static async loginWithPassword(user: Partial<Meteor.User>, password: string | IAuth.Password): Promise<IAuth.AuthToken> {
     try {
       if (!user || !password) {
         throw new Error('Unauthorized');
@@ -103,7 +88,7 @@ class Auth {
    * @param password - The user's password, either as a plain string or as a Password object.
    * @throws Error if the password object does not have the required 'digest' and 'algorithm' properties.
    */
-  private static validatePassword(password: string | Password): void {
+  private static validatePassword(password: string | IAuth.Password): void {
     if (typeof password === 'string') return;
     if (!password.digest || !password.algorithm) {
       throw new Error('Invalid password format');
@@ -142,7 +127,7 @@ class Auth {
     }
   }
 
-  static extractPassword(body: BodyParams): string | Password {
+  static extractPassword(body: IAuth.BodyParams): string | IAuth.Password {
     return body.hashed ? { digest: body.password, algorithm: 'sha-256' } : body.password;
   }
 }

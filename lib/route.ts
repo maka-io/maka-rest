@@ -6,41 +6,19 @@ import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
 import MakaRest from './maka-rest';
 
-interface EndpointContext {
-  urlParams: any;
-  queryParams: any;
-  bodyParams: any;
-  request: Request;
-  response: Response;
-  done: () => void;
-  user?: Meteor.User;
-  userId?: string;
-}
+import {
+  Route as IRoute,
+} from '@maka/types';
 
-interface EndpointOptions {
-  authRequired?: boolean;
-  roleRequired?: string[];
-  scopeRequired?: string[];
-  action: (context: EndpointContext) => Promise<any>;
-}
-
-interface RouteOptions {
-  [key: string]: any; // Define specific route options here
-  rateLimit?: {
-    points?: number;
-    duration?: number;
-  };
-}
-
-class Route {
+class Route implements IRoute {
   private api: MakaRest; // Replace with the actual type of your API class
   private path: string;
-  private options: RouteOptions;
-  private endpoints: { [method: string]: EndpointOptions };
+  private options: IRoute.RouteOptions;
+  private endpoints: { [method: string]: IRoute.EndpointOptions };
   private jsonRoutes: JsonRoutes;
   private rateLimiter?: RateLimiterMemory | RateLimiterRedis;
 
-  constructor(api: any, path: string, options: RouteOptions, endpoints: { [method: string]: EndpointOptions }) {
+  constructor(api: any, path: string, options: IRoute.RouteOptions, endpoints: { [method: string]: IRoute.EndpointOptions }) {
     this.api = api;
     this.path = path ?? api._config.apiPath ?? ''; // Use apiPath as default if path is null
     this.options = options || {};
@@ -112,7 +90,7 @@ class Route {
             }
           }
 
-          const endpointContext: EndpointContext = {
+          const endpointContext: IRoute.EndpointContext = {
             urlParams: req.params,
             queryParams: req.query,
             bodyParams: req.body,
@@ -177,7 +155,7 @@ class Route {
     });
   }
 
-  private async _callEndpoint(endpointContext: EndpointContext, endpoint: EndpointOptions): Promise<StatusResponse> {
+  private async _callEndpoint(endpointContext: IRoute.EndpointContext, endpoint: IRoute.EndpointOptions): Promise<StatusResponse> {
     const auth = await this._authAccepted(endpointContext, endpoint);
     if (auth.success) {
       if (this._roleAccepted(endpointContext, endpoint)) {
@@ -199,14 +177,14 @@ class Route {
     }
   }
 
-  private async _authAccepted(endpointContext: EndpointContext, endpoint: EndpointOptions): Promise<{ success: boolean; data?: any }> {
+  private async _authAccepted(endpointContext: IRoute.EndpointContext, endpoint: IRoute.EndpointOptions): Promise<{ success: boolean; data?: any }> {
     if (endpoint.authRequired) {
       return await this._authenticate(endpointContext);
     }
     return { success: true };
   }
 
-  private async _authenticate(endpointContext: EndpointContext): Promise<{ success: boolean; data?: any }> {
+  private async _authenticate(endpointContext: IRoute.EndpointContext): Promise<{ success: boolean; data?: any }> {
     const auth = this.api._config.auth.user.call(this, endpointContext);
 
     if (!auth || !auth.token) return { success: false };
@@ -221,7 +199,7 @@ class Route {
     return { success: true, data: auth };
   }
 
-  private _roleAccepted(endpointContext: EndpointContext, endpoint: EndpointOptions): boolean {
+  private _roleAccepted(endpointContext: IRoute.EndpointContext, endpoint: IRoute.EndpointOptions): boolean {
     if (!endpoint.roleRequired || !endpointContext.user) return true;
 
     const hasRole = Roles.userIsInRole(endpointContext.user, endpoint.roleRequired);
