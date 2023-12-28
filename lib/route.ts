@@ -4,7 +4,7 @@ import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
 import { JsonRoutes } from './json-routes';
 import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
-import { Restivus } from './restivus';
+import MakaRest from './maka-rest';
 
 interface EndpointContext {
   urlParams: any;
@@ -33,7 +33,7 @@ interface RouteOptions {
 }
 
 class Route {
-  private api: Restivus; // Replace with the actual type of your API class
+  private api: MakaRest; // Replace with the actual type of your API class
   private path: string;
   private options: RouteOptions;
   private endpoints: { [method: string]: EndpointOptions };

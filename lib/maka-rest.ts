@@ -6,7 +6,7 @@ import { Auth } from './auth';
 import Codes, { StatusResponse } from './codes';
 import { Request, Response, IncomingMessage } from 'express';
 import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
-import { RedisClient } from 'redis';
+import { RedisClientType } from '@redis/client';
 
 type LoginType = 'default' | null;
 
@@ -24,14 +24,16 @@ interface MakaRestOptions {
   };
   defaultHeaders: Record<string, string>;
   enableCors: boolean;
-  defaultOptionsEndpoint?: () => void;
+  defaultOptionsEndpoint?: () => Route.RouteOptions;
   rateLimitOptions?: IRateLimiterOptions
     & {
       useRedis?: boolean;
-      redis?: RedisClient;
+      redis?: RedisClientType;
       keyGenerator?: (req: Request) => string;
     };
 }
+
+
 
 class MakaRest {
   readonly _routes: Route[];
@@ -187,7 +189,7 @@ class MakaRest {
     }
   }
 
-  private normalizeApiPath(options: Partial<MakaRestOptions>): string {
+  private normalizeApiPath(options: Partial<IMakaRest.MakaRestOptions>): string {
     // Validate apiPath and isRoot
     if (!options.isRoot && !options.apiPath) {
       throw new Error("apiPath must be defined unless isRoot is set to true.");
