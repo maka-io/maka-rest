@@ -13,7 +13,7 @@ import {
 } from '@maka/types';
 
 
-class MakaRest implements: IMakaRest.IMakaRest {
+class MakaRest implements IMakaRest.IMakaRest {
   readonly _routes: Route[];
   readonly _config: IMakaRest.MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
