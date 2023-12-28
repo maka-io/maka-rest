@@ -4,7 +4,6 @@
  * It includes methods for user login validation and token generation.
  */
 import { Meteor } from 'meteor/meteor';
-import { Accounts } from 'meteor/accounts-base';
 
 import {
   Auth as IAuth

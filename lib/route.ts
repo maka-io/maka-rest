@@ -2,7 +2,6 @@ import { Meteor } from 'meteor/meteor';
 import { Request, Response } from 'express';
 import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
 import { JsonRoutes } from './json-routes';
-import { Roles } from 'meteor/alanning:roles';
 import Codes, { StatusResponse } from './codes';
 import MakaRest from './maka-rest';
 

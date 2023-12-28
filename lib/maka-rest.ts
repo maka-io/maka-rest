@@ -1,6 +1,5 @@
 import { Meteor } from 'meteor/meteor';
 import { WebApp } from 'meteor/webapp';
-import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
 import Codes from './codes';
@@ -203,6 +202,7 @@ class MakaRest implements IMakaRest.IMakaRest {
 
   private initializeDefaultAuthEndpoints(): void {
     if (MakaRest.auth.loginType === 'default') {
+      console.debug('MAKA REST: Initializing default auth endpoints');
       this.addRoute('login', { onRoot: true, authRequired: false }, {
         post: async (incomingMessage: IncomingMessage) => { return await this.login(incomingMessage) }
       });
