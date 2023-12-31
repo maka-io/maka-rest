@@ -1,26 +1,43 @@
 import { Meteor } from 'meteor/meteor';
 import { WebApp } from 'meteor/webapp';
-import { Accounts } from 'meteor/accounts-base';
 import { Route } from './route';
 import { Auth } from './auth';
 import Codes from './codes';
 import { Request, Response, IncomingMessage } from 'express';
-import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
+import { RateLimiterMemory, RateLimiterRedis, IRateLimiterOptions } from 'rate-limiter-flexible';
+import { RedisClientType } from '@redis/client';
 
-import {
-  MakaRest as IMakaRest,
-  Codes as ICodes
-} from '@maka/types';
+interface MakaRestOptions {
+  debug?: boolean;
+  paths: string[];
+  apiRoot: string; // Root of the API, e.g., 'api'
+  apiPath?: string; // Additional path after the version, required unless isRoot is true
+  version: string; // API version, e.g., 'v1'
+  isRoot?: boolean; // If true, this instance represents the root of the API
+  prettyJson: boolean;
+  auth: {
+    token: string;
+    user: (http: IncomingMessage) => { token?: string };
+  };
+  defaultHeaders: Record<string, string>;
+  enableCors: boolean;
+  defaultOptionsEndpoint?: () => Route.RouteOptions;
+  rateLimitOptions?: IRateLimiterOptions
+  & {
+    useRedis?: boolean;
+    redis?: RedisClientType;
+    keyGenerator?: (req: Request) => string;
+  };
+}
 
-
-class MakaRest implements IMakaRest.IMakaRest {
+class MakaRest {
   readonly _routes: Route[];
-  readonly _config: IMakaRest.MakaRestOptions;
+  readonly _config: MakaRestOptions;
   readonly rateLimiter?: RateLimiterMemory | RateLimiterRedis;
   readonly partialApiPath: string;
   static defaultAuthInitialized = false; // Static property to track auth initialization
-  request: Request;
-  response: Response;
+  private request: Request;
+  private response: Response;
 
   // Type for interceptor function
   static interceptorType = (req: IncomingMessage, res: Response, next: Function) => {};
@@ -203,6 +220,7 @@ class MakaRest implements IMakaRest.IMakaRest {
 
   private initializeDefaultAuthEndpoints(): void {
     if (MakaRest.auth.loginType === 'default') {
+      console.debug('MAKA REST: Initializing default auth endpoints');
       this.addRoute('login', { onRoot: true, authRequired: false }, {
         post: async (incomingMessage: IncomingMessage) => { return await this.login(incomingMessage) }
       });

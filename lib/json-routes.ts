@@ -2,16 +2,21 @@ import { WebApp } from 'meteor/webapp';
 import { IncomingMessage, ServerResponse } from 'http';
 import { parse } from 'url';
 
-import {
-  JsonRoutes as IJsonRoutes
-} from '@maka/types';
+export interface RouteHandler {
+  method: string;
+  path: string;
+  handler: (req: IncomingMessage, res: ServerResponse) => void;
+}
 
+export interface Middleware {
+  (req: IncomingMessage, res: ServerResponse, next: Function): void;
+}
 
-class JsonRoutes implements IJsonRoutes {
+class JsonRoutes {
   private static instance: JsonRoutes;
-  private routes: IJsonRoutes.RouteHandler[] = [];
-  private middlewares: IJsonRoutes.Middleware[] = [];
-  private errorMiddlewares: IJsonRoutes.Middleware[] = [];
+  private routes: RouteHandler[] = [];
+  private middlewares: Middleware[] = [];
+  private errorMiddlewares: Middleware[] = [];
   private responseHeaders: Record<string, string> = {
     'Cache-Control': 'no-store',
     Pragma: 'no-cache',
@@ -34,12 +39,12 @@ class JsonRoutes implements IJsonRoutes {
     instance.routes.push({ method, path, handler });
   }
 
-  public static use(middleware: IJsonRoutes.Middleware) {
+  public static use(middleware: Middleware) {
     const instance = JsonRoutes.getInstance();
     instance.middlewares.push(middleware);
   }
 
-  public static useErrorMiddleware(middleware: IJsonRoutes.Middleware) {
+  public static useErrorMiddleware(middleware: Middleware) {
     const instance = JsonRoutes.getInstance();
     instance.errorMiddlewares.push(middleware);
   }
@@ -80,7 +85,7 @@ class JsonRoutes implements IJsonRoutes {
     }
   }
 
-  private matchRoute(req: IncomingMessage): IJsonRoutes.RouteHandler | undefined {
+  private matchRoute(req: IncomingMessage): RouteHandler | undefined {
     const parsedUrl = parse(req.url || '', true);
     const path = parsedUrl.pathname || '';
 
