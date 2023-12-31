@@ -221,6 +221,7 @@ class MakaRest implements IMakaRest.IMakaRest {
 
     const user = Auth.extractUser(bodyParams) as Meteor.User;
     const auth = await Auth.loginWithPassword(user, Auth.extractPassword(bodyParams));
+
     if (auth.userId && auth.authToken) {
       const searchQuery = { [this._config.auth.token]: Accounts._hashLoginToken(auth.authToken) };
       const user = await Meteor.users.findOneAsync({ '_id': auth.userId }, searchQuery);

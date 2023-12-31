@@ -34,7 +34,7 @@ class Auth implements IAuth {
 
       // Retrieve the user from the database
       const authenticatingUserSelector = this.getUserQuerySelector(user);
-      const authenticatingUser = await Meteor.users.findOneAsync(authenticatingUserSelector);
+      const authenticatingUser = Meteor.users.findOne(authenticatingUserSelector);
 
       if (!authenticatingUser) {
         throw 'Unauthorized';
@@ -111,7 +111,7 @@ class Auth implements IAuth {
     } else if (user.username) {
       return { 'username': user.username };
     } else if (user.emails && user.emails.length > 0 && user.emails[0].address) {
-      return { emails: [ { address: user.emails[0].address, verified: false } ] };
+      return { 'emails.address': user.emails[0].address };
     }
 
     throw new Error('Cannot create selector from invalid user');
