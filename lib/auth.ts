@@ -47,7 +47,7 @@ class Auth {
 
       // Retrieve the user from the database
       const authenticatingUserSelector = this.getUserQuerySelector(user);
-      const authenticatingUser = Meteor.users.findOne(authenticatingUserSelector);
+      const authenticatingUser = await Meteor.users.findOneAsync(authenticatingUserSelector);
 
       if (!authenticatingUser) {
         throw 'Unauthorized';
