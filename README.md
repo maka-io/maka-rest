@@ -48,7 +48,7 @@ Or using maka-cli
 ```
 
 Often, the easiest way to explain something is by example, so here's a short example of what it's
-like to create an API with Maka-Rest (keep scrolling for a JavaScript version):
+like to create an API with Maka-Rest:
 
 ```javascript
 Items = new Mongo.Collection('items');
@@ -158,20 +158,6 @@ The following configuration options are available when initializing an API using
   from _any_ domain (when `false`, the API will only accept requests from the domain where the API
   is being hosted. _Note: Only applies to requests originating from browsers)._
 
-##### `onLoggedIn`
-- _Function_
-- Default: `undefined`
-- A hook that runs once a user has been successfully logged into their account via the `/login`
-  endpoint. [Context](#endpoint-context) is the same as within authenticated endpoints. Any
-  returned data will be added to the response body as `data.extra`.
-
-##### `onLoggedOut`
-- _Function_
-- Default: `undefined`
-- Same as onLoggedIn, but runs once a user has been successfully logged out of their account via
-  the `/logout` endpoint. [Context](#endpoint-context) is the same as within authenticated
-  endpoints. Any returned data will be added to the response body as `data.extra`.
-
 ##### `prettyJson`
 - _Boolean_
 - Default: `false`
@@ -221,12 +207,6 @@ Here's a sample configuration with the complete set of options:
     defaultHeaders: {
       'Content-Type': 'application/json'
     },
-    onLoggedIn() {
-      console.log(this.user.username + ' (' + this.userId + ') logged in');
-    },
-    onLoggedOut() {
-      console.log(this.user.username + ' (' + this.userId + ') logged out');
-    },
     prettyJson: true,
     useDefaultAuth: true,
     version: 'v1'
@@ -240,8 +220,6 @@ The top level properties of the options apply to both routes that will be genera
 
 ##### `path`
 - _String_
-- Default: Name of the collection (the name passed to `new Mongo.Collection()`, or `'users'` for
-  `Meteor.users`)
 - The base path for the generated routes. Given a path `'other-path'`, routes will be generated at
   `'api/other-path'` and `'api/other-path/:id'`
 
