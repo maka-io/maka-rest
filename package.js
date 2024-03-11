@@ -1,7 +1,7 @@
 Package.describe({
   name: 'maka:rest',
   summary: 'Create authenticated REST APIs in Meteor 2.13+ via HTTP/HTTPS',
-  version: '4.0.8',
+  version: '4.0.9',
   git: 'https://github.com/maka-io/maka-rest.git'
 });
 
@@ -21,7 +21,7 @@ Package.onUse(function (api) {
 
   // Meteor dependencies
   api.use('ecmascript');
-  api.use('typescript@4.9.5-alpha.300.19');
+  api.use('typescript');
 
   // Exports
   api.mainModule('lib/maka-rest.ts', 'server');
