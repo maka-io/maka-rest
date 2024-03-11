@@ -17,11 +17,11 @@ Npm.depends({
 
 Package.onUse(function (api) {
   // Minimum Meteor version
-  api.versionsFrom(['2.13', '3.0-alpha.19']);
+  api.versionsFrom(['2.13', '3.0-beta.6']);
 
   // Meteor dependencies
   api.use('ecmascript');
-  api.use('typescript');
+  api.use('typescript@4.9.5-alpha.300.19');
 
   // Exports
   api.mainModule('lib/maka-rest.ts', 'server');
