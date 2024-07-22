@@ -9,7 +9,7 @@
   - [Terminology](#terminology)
 - [Writing a Maka-Rest API](#writing-a-maka-rest-api)
   - [Configuration Options](#configuration-options)
-  - [Defining Custom Routes](#defining-custom-routes)
+  - [Defining Routes](#defining-routes)
     - [Path Structure](#path-structure)
     - [Route Options](#route-options)
     - [Defining Endpoints](#defining-endpoints)
