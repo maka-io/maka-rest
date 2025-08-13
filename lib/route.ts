@@ -64,6 +64,22 @@ class Route {
     }
   }
 
+  private extractUrlParams(actualUrl: string, routePath: string): Record<string, string> {
+    const actualParts = actualUrl.split('?')[0].split('/').filter(Boolean);
+    const routeParts = routePath.split('/').filter(Boolean);
+    const params: Record<string, string> = {};
+
+    for (let i = 0; i < routeParts.length; i++) {
+      if (routeParts[i].startsWith(':')) {
+        const key = routeParts[i].substring(1);
+        params[key] = actualParts[i];
+      }
+    }
+
+    return params;
+  }
+
+
   addToApi(onRoot: boolean = false): void {
     const availableMethods = ['get', 'post', 'put', 'patch', 'delete', 'options'];
 
@@ -111,7 +127,7 @@ class Route {
           }
 
           const endpointContext: EndpointContext = {
-            urlParams: req.params,
+            urlParams: this.extractUrlParams(req.url || '', fullPath),
             queryParams: req.query,
             bodyParams: req.body,
             request: req,
