@@ -150,7 +150,8 @@ class Route {
             if (this.api._config.debug) {
               console.log(`\n${method.toUpperCase()} ${fullPath}`);
               console.log('Request:', {
-                urlParams: req.params,
+                urlParams: this.extractUrlParams(req.url || '', fullPath),
+
                 queryParams: req.query,
                 bodyParams: req.body,
                 headers: req.headers
@@ -232,6 +233,7 @@ class Route {
 
     endpointContext.user = user;
     endpointContext.userId = user._id;
+
     return { success: true, data: auth };
   }
 
