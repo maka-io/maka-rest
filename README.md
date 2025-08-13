@@ -18,6 +18,9 @@
       - [Response Data](#response-data)
   - [Versioning an API](#versioning-an-api)
   - [Documenting an API](#documenting-an-api)
+- [Advanced Features](#advanced-features)
+  - [Redis Configuration](#redis-configuration)
+  - [Adding Interceptors](#adding-interceptors);
 - [Consuming a Maka-Rest API](#consuming-a-maka-rest-api)
   - [Basic Usage](#basic-usage)
   - [Authenticating](#authenticating)
@@ -372,23 +375,23 @@ and will get their default values from the route.
 Api.addRoute('articles', {authRequired: true}, {
   get: {
     authRequired: false,
-    action: function () {
+    action(context) {
       // GET api/articles
     }
   },
-  post: function () {
+  post(context) {
     // POST api/articles
   },
-  put: function () {
+  put(context) {
     // PUT api/articles
   },
-  patch: function () {
+  patch(context) {
     // PATCH api/articles
   },
-  delete: function () {
+  delete(context) {
     // DELETE api/articles
   },
-  options: function () {
+  options(context) {
     // OPTIONS api/articles
   }
 });
@@ -555,6 +558,63 @@ What's a REST API without awesome docs? I'll tell you: absolutely freaking usele
 we use and recommend [apiDoc][]. It allows you to generate beautiful and extremely handy API docs
 from your JavaScript or CoffeeScript comments. It supports other comment styles as well, but we're
 Meteorites, so who cares? Check it out. Use it.
+
+## Advanced Features
+
+### Redis Configuration
+
+Maka-Rest supports request rate limiting using either in-memory storage or Redis. To enable Redis-backed rate limiting:
+
+```ts
+import { createClient } from 'redis';
+import MakaRest from 'meteor/maka:rest';
+
+const redisClient = createClient({ url: 'redis://localhost:6379' });
+await redisClient.connect();
+
+const Api = new MakaRest({
+  rateLimitOptions: {
+    points: 5, // Max number of requests
+    duration: 1, // Per second
+    useRedis: true,
+    redis: redisClient,
+    keyGenerator: (req) => req.headers['x-auth-token'] || req.connection.remoteAddress
+  }
+});
+```
+
+### Adding Interceptors
+
+Maka-Rest provides a simple interface to add custom interceptors (middleware-like functions) that run before route handlers. This is useful for:
+
+- Custom logging
+- Metrics
+- Tracing
+- IP whitelisting
+- Header inspection
+
+#### Example:
+```ts
+MakaRest.addInterceptor((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+```
+
+You can add multiple interceptors. They will be executed in the order added.
+
+```ts
+MakaRest.addInterceptor((req, res, next) => {
+  if (req.headers['x-api-key'] !== '12345') {
+    res.writeHead(403);
+    res.end('Forbidden');
+  } else {
+    next();
+  }
+});
+```
+
+> Interceptors are run before any route logic. You can use them for global logic without modifying routes.
 
 # Consuming A Maka-Rest API
 
