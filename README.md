@@ -66,8 +66,8 @@ if (Meteor.isServer) {
 
   // Maps to: /api/articles/:id
   Api.addRoute('articles/:id', {authRequired: true}, {
-    get() {
-      return Articles.findOne(this.urlParams.id);
+    get(context) {
+      return Articles.findOne(context.urlParams.id);
     },
     delete: {
       roleRequired: ['author', 'admin'],
@@ -263,24 +263,24 @@ Paths can have variable parameters. For example, you can create a route to show 
 specific id. The `id` is variable depending on the post you want to see such as "/articles/1" or
 "/articles/2". To declare a named parameter in the path, use the `:` syntax followed by the parameter
 name. When a user goes to that URL, the actual value of the parameter will be stored as a property
-on `this.urlParams` in your endpoint function.
+on `context.urlParams` in your endpoint function.
 
 In this example we have a parameter named `_id`. If we navigate to the `/post/5` URL in our browser,
 inside of the GET endpoint function we can get the actual value of the `_id` from
-`this.urlParams._id`. In this case `this.urlParams._id => 5`.
+`context.urlParams._id`. In this case `context.urlParams._id => 5`.
 
 ```javascript
 // Given a URL "/post/5"
 Api.addRoute('/post/:_id', {
   get(context) {
-    const id = this.urlParams._id; // "5"
+    const id = context.urlParams._id; // "5"
   }
 });
 ```
 
 You can have multiple URL parameters. In this example, we have an `_id` parameter and a `commentId`
 parameter. If you navigate to the URL `/post/5/comments/100` then inside your endpoint function
-`this.urlParams._id => 5` and `this.urlParams.commentId => 100`.
+`context.urlParams._id => 5` and `context.urlParams.commentId => 100`.
 
 ```javascript
 // Given a URL "/post/5/comments/100"
@@ -292,7 +292,7 @@ Api.addRoute('/post/:_id/comments/:commentId', {
 });
 ```
 
-If there is a query string in the URL, you can access that using `this.queryParams`.
+If there is a query string in the URL, you can access that using `context.queryParams`.
 
 ```javascript
 // Given the URL: "/post/5?q=liked#hash_fragment"
@@ -413,15 +413,15 @@ Each endpoint has access to:
 - The authenticated user's `Meteor.userId`. Only available if `authRequired` is `true` and a user is
   successfully authenticated. If not, it will be `undefined`.
 
-##### `this.urlParams`
+##### `context.urlParams`
 - _Object_
 - Non-optional parameters extracted from the URL. A parameter `id` on the path `articles/:id` would be
-  available as `this.urlParams.id`.
+  available as `context.urlParams.id`.
 
-##### `this.queryParams`
+##### `context.queryParams`
 - _Object_
 - Optional query parameters from the URL. Given the URL `https://yoursite.com/articles?likes=true`,
-  `this.queryParams.likes => true`.
+  `context.queryParams.likes => true`.
 
 ##### `this.bodyParams`
 - _Object_
