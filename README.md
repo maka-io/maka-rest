@@ -269,7 +269,7 @@ inside of the GET endpoint function we can get the actual value of the `_id` fro
 ```javascript
 // Given a URL "/post/5"
 Api.addRoute('/post/:_id', {
-  get: function () {
+  get(context) {
     const id = this.urlParams._id; // "5"
   }
 });
@@ -282,9 +282,9 @@ parameter. If you navigate to the URL `/post/5/comments/100` then inside your en
 ```javascript
 // Given a URL "/post/5/comments/100"
 Api.addRoute('/post/:_id/comments/:commentId', {
-  get: function () {
-    const id = this.urlParams._id; // "5"
-    const commentId = this.urlParams.commentId; // "100"
+  get(context) {
+    const id = context.urlParams._id; // "5"
+    const commentId = context.urlParams.commentId; // "100"
   }
 });
 ```
@@ -294,9 +294,9 @@ If there is a query string in the URL, you can access that using `this.queryPara
 ```javascript
 // Given the URL: "/post/5?q=liked#hash_fragment"
 Api.addRoute('/post/:_id', {
-  get: function () {
-    const id = this.urlParams._id;
-    const query = this.queryParams; // query.q -> "liked"
+  get(context) {
+    const id = context.urlParams._id;
+    const query = context.queryParams; // query.q -> "liked"
   }
 });
 ```
@@ -629,3 +629,4 @@ For any endpoints that require the default authentication, you must include the 
 ```bash
 curl -H "X-Auth-Token: f2KpRW7KeN9aPmjSZ" http://localhost:3000/api/articles/
 ```
+
