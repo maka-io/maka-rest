@@ -60,7 +60,6 @@ Articles = new Mongo.Collection('articles');
 if (Meteor.isServer) {
   // Global API configuration
   const Api = new MakaRest({
-    useDefaultAuth: true,
     prettyJson: true
   });
 
@@ -166,12 +165,6 @@ The following configuration options are available when initializing an API using
 - Default: `false`
 - If `true`, render formatted JSON in response.
 
-##### `useDefaultAuth`
-- _Boolean_
-- Default: `false`
-- If `true`, `POST /login` and `GET /logout` endpoints are added to the API. See [Authenticating]
-  (#authenticating) for details on using these endpoints.
-
 ##### `version`
 - _String_
 - Default: `null`
@@ -211,7 +204,6 @@ Here's a sample configuration with the complete set of options:
       'Content-Type': 'application/json'
     },
     prettyJson: true,
-    useDefaultAuth: true,
     version: 'v1'
   });
 ```
@@ -522,9 +514,8 @@ different API versioning strategies.
 
 ```javascript
 // Configure first version of the API
-var ApiV1 = new Restivus({
+var ApiV1 = new MakaRest({
   version: 'v1',
-  useDefaultAuth: true,
   prettyJson: true
 });
 
@@ -536,7 +527,7 @@ ApiV1.addRoute('custom', {
 });
 
 // Configure another version of the API (with a different set of config options if needed)
-var ApiV2 = new Restivus({
+var ApiV2 = new MakaRest({
   version: 'v2',
   enableCors: false
 });
@@ -640,9 +631,16 @@ _Note: To use the default authentication, you must first [create a user with the
 package](http://docs.meteor.com/#/full/accounts_passwords). You can do this with Maka-Rest if you
 [setup a POST collection endpoint for the `Meteor.users` collection](#users-collection-endpoints)._
 
+All Authorization has been moved to static methods on the MakaRest root object.
+
+MakaRest.auth.loginType = 'default' | null
+MakaRest.auth.onLoggedIn((req) => {});
+MakaRest.auth.onLoggedOut((req) => {});
+MakaRest.auth.onLoginFailure((req, reason) => {});
+
 #### Logging In
 
-If you have `useDefaultAuth` set to `true`, you now have a `POST /api/login` endpoint that returns a
+If you have `MakaRest.auth.loginType` set to `default`, you now have a `POST /api/login` endpoint that returns a
 `userId` and `authToken`. You must save these, and include them in subsequent requests. In addition
 to the `password`, the login endpoint requires one of the following parameters (via the request
 body):

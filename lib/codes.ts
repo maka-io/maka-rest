@@ -1,6 +1,6 @@
 import { StatusCodes, getReasonPhrase } from 'http-status-codes';
 
-interface StatusResponse {
+export interface StatusResponse {
   statusCode: number;
   status: string;
   data: any;
