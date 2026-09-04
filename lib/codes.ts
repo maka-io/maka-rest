@@ -72,7 +72,7 @@ class Codes {
    * @returns StatusResponse structured response object.
    */
   static noContent204(body = null, extra?: any, headers?: Record<string, string>): StatusResponse {
-    return this.generateResponse(StatusCodes.RESET_CONTENT, body, extra, headers);
+    return this.generateResponse(StatusCodes.NO_CONTENT, body, extra, headers);
   }
 
   /**
