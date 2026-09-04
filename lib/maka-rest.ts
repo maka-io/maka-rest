@@ -1,4 +1,5 @@
 import { Meteor } from 'meteor/meteor';
+import { Accounts } from 'meteor/accounts-base';
 import { WebApp } from 'meteor/webapp';
 import { Route, RouteOptions } from './route';
 import { Auth } from './auth';

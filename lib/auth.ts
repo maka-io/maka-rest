@@ -4,6 +4,7 @@
  * It includes methods for user login validation and token generation.
  */
 import { Meteor } from 'meteor/meteor';
+import { Accounts } from 'meteor/accounts-base';
 
 export interface Password {
   digest: string;
@@ -57,7 +58,7 @@ class Auth {
       }
 
       // Authenticate the user's password
-      const passwordVerification = Accounts._checkPassword(authenticatingUser, password);
+      const passwordVerification = await Accounts._checkPasswordAsync(authenticatingUser, password);
       if (passwordVerification.error) {
         throw 'Unauthorized';
       }
@@ -65,7 +66,7 @@ class Auth {
       // Add a new auth token to the user's account
       const authToken = Accounts._generateStampedLoginToken();
       const hashedToken = Accounts._hashLoginToken(authToken.token);
-      Accounts._insertHashedLoginToken(authenticatingUser._id, { hashedToken, when: new Date() });
+      await Accounts._insertHashedLoginToken(authenticatingUser._id, { hashedToken, when: new Date() });
 
       return { authToken: authToken.token, userId: authenticatingUser._id, when: authToken.when };
     } catch (error: any) {

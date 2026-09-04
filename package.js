@@ -1,7 +1,7 @@
 Package.describe({
   name: 'maka:rest',
   summary: 'Create authenticated REST APIs in Meteor 2.13+ via HTTP/HTTPS',
-  version: '4.0.17',
+  version: '4.0.18',
   git: 'https://github.com/maka-io/maka-rest.git'
 });
 
@@ -21,6 +21,10 @@ Package.onUse(function (api) {
   // Meteor dependencies
   api.use('ecmascript');
   api.use('typescript');
+  // Provides the Accounts object and its token internals. accounts-password
+  // stays the consuming app's responsibility -- it is only needed by the
+  // default login endpoints, via Accounts._checkPasswordAsync.
+  api.use('accounts-base', 'server');
 
   // maka-rest.ts (and route.ts in turn) import these siblings with
   // relative paths -- not covered by mainModule() on its own. They must
