@@ -1,7 +1,7 @@
 Package.describe({
   name: 'maka:rest',
   summary: 'Create authenticated REST APIs in Meteor 2.13+ via HTTP/HTTPS',
-  version: '4.0.16',
+  version: '4.0.17',
   git: 'https://github.com/maka-io/maka-rest.git'
 });
 
@@ -40,5 +40,24 @@ Package.onUse(function (api) {
 });
 
 Package.onTest(function (api) {
+  api.use('maka:rest');
 
+  api.use([
+    'ecmascript',
+    'typescript',
+    'meteortesting:mocha',
+    'mongo',
+    'webapp',
+    'accounts-base',
+    'accounts-password',
+  ]);
+
+  api.addFiles([
+    'test/_fixture.ts',
+    'test/codes-tests.ts',
+    'test/json-routes-tests.ts',
+    'test/route-tests.ts',
+    'test/auth-tests.ts',
+    'test/http-tests.ts',
+  ], 'server');
 });
