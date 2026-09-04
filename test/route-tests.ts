@@ -175,7 +175,14 @@ describe('Route', function () {
     describe('role gating', function () {
       const realRoles = (globalThis as any).Roles;
       afterEach(function () {
-        (globalThis as any).Roles = realRoles;
+        // Restore true absence, not a defined-but-undefined property: the
+        // former makes a bare `Roles` reference a ReferenceError, the latter a
+        // TypeError, and the case below depends on the difference.
+        if (realRoles === undefined) {
+          delete (globalThis as any).Roles;
+        } else {
+          (globalThis as any).Roles = realRoles;
+        }
       });
 
       it('answers 403 when the user lacks the role', async function () {
@@ -198,6 +205,29 @@ describe('Route', function () {
           action: async () => Codes.success200({ ok: true }),
         });
         assert.strictEqual(res.statusCode, 200);
+      });
+
+      /*
+       * Characterisation, not an endorsement. `Roles` is referenced as a bare
+       * global in lib/route.ts and Package.onUse declares no roles dependency,
+       * so with alanning:roles absent every role-gated endpoint throws rather
+       * than answering 403 -- over HTTP that surfaces as a 500. This is the
+       * same defect class that `Accounts` had; fixing it means either
+       * depending on alanning:roles or resolving it defensively, so it is left
+       * as a maintainer decision. Change this test when that is decided.
+       */
+      it('throws rather than 403s when alanning:roles is absent', async function () {
+        delete (globalThis as any).Roles;
+        const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
+        await assert.rejects(
+          () =>
+            route._callEndpoint(ctx({ user: { _id: 'u1' } }), {
+              authRequired: false,
+              roleRequired: ['admin'],
+              action: async () => Codes.success200(),
+            }),
+          /Roles is not defined/
+        );
       });
 
       it('requires scope as well as role when scopeRequired is set', async function () {

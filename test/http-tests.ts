@@ -105,20 +105,7 @@ describe('HTTP', function () {
       await Meteor.users.removeAsync({ username: USERNAME });
     });
 
-    /*
-     * The cases below are pending on a live defect, not on unfinished tests.
-     *
-     * lib/auth.ts and lib/maka-rest.ts reference `Accounts` as a bare global,
-     * but package.js declares no accounts dependency in Package.onUse, so the
-     * symbol is undefined inside the maka:rest package scope at runtime. Every
-     * one of these paths dies on `ReferenceError: Accounts is not defined`:
-     * login returns 401 (the ReferenceError is swallowed by the catch in
-     * Auth.loginWithPassword and surfaces as an auth error), and any request
-     * that actually presents an X-Auth-Token returns 500.
-     *
-     * Un-skip these once `Accounts` is imported properly.
-     */
-    it.skip('logs in and returns an auth token', async function () {
+    it('logs in and returns an auth token', async function () {
       const body = JSON.stringify({ username: USERNAME, password: PASSWORD });
       const res = await request(rootPath('login'), {
         method: 'POST',
@@ -133,24 +120,24 @@ describe('HTTP', function () {
       token = res.json.authToken;
     });
 
-    it.skip('fires the onLoggedIn hook', function () {
+    it('fires the onLoggedIn hook', function () {
       assert.ok(authEvents.includes('in'), 'expected an onLoggedIn event');
     });
 
-    it.skip('accepts the token on an auth-required route', async function () {
+    it('accepts the token on an auth-required route', async function () {
       const res = await request(testPath('locked'), { headers: { 'X-Auth-Token': token } });
       assert.strictEqual(res.status, 200);
       assert.ok(res.json.userId, 'expected the authenticated userId on the context');
     });
 
-    it.skip('rejects a bogus token with 401 rather than 500', async function () {
+    it('rejects a bogus token with 401 rather than 500', async function () {
       const res = await request(testPath('locked'), {
         headers: { 'X-Auth-Token': 'not-a-real-token' },
       });
       assert.strictEqual(res.status, 401);
     });
 
-    it.skip('logs out and invalidates the token', async function () {
+    it('logs out and invalidates the token', async function () {
       const res = await request(rootPath('logout'), {
         method: 'POST',
         headers: { 'X-Auth-Token': token },
@@ -161,31 +148,6 @@ describe('HTTP', function () {
         headers: { 'X-Auth-Token': token },
       });
       assert.strictEqual(afterLogout.status, 401, 'token should no longer authenticate');
-    });
-
-    /*
-     * Characterisation tests: these pin the *current, broken* behaviour so the
-     * defect is visible in a green run and so fixing it trips these instead of
-     * passing silently.
-     */
-    it('currently 500s on a presented auth token (Accounts is not in scope)', async function () {
-      const res = await request(testPath('locked'), {
-        headers: { 'X-Auth-Token': 'not-a-real-token' },
-      });
-      assert.strictEqual(res.status, 500, 'if this is now 401, the Accounts defect is fixed');
-    });
-
-    it('currently cannot log in (Accounts is not in scope)', async function () {
-      const body = JSON.stringify({ username: USERNAME, password: PASSWORD });
-      const res = await request(rootPath('login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': String(Buffer.byteLength(body)),
-        },
-        body,
-      });
-      assert.strictEqual(res.status, 401, 'if this is now 200, the Accounts defect is fixed');
     });
   });
 });

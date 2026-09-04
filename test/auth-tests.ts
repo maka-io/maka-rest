@@ -107,25 +107,14 @@ describe('Auth', function () {
       assert.strictEqual(res.authToken, '');
     });
 
-    /*
-     * Pending on a live defect, not on unfinished tests.
-     *
-     * lib/auth.ts calls Accounts._checkPassword / _generateStampedLoginToken /
-     * _hashLoginToken, and lib/maka-rest.ts calls _hashLoginToken, but
-     * package.js declares no accounts dependency in Package.onUse -- so
-     * `Accounts` is undefined inside the maka:rest package scope at runtime.
-     * loginWithPassword's catch-all swallows the ReferenceError and returns it
-     * in `error`, which is why the two cases above pass whether or not auth
-     * actually works. Un-skip once `Accounts` is imported properly.
-     */
-    it.skip('issues a token for correct credentials', async function () {
+    it('issues a token for correct credentials', async function () {
       const res = await Auth.loginWithPassword({ username: USERNAME } as any, PASSWORD);
       assert.strictEqual(res.error, undefined);
       assert.ok(res.authToken.length > 0, 'expected an auth token');
       assert.ok(res.userId.length > 0, 'expected a userId');
     });
 
-    it.skip('stores the issued token hashed, never in the clear', async function () {
+    it('stores the issued token hashed, never in the clear', async function () {
       const res = await Auth.loginWithPassword({ username: USERNAME } as any, PASSWORD);
       const hashed = Accounts._hashLoginToken(res.authToken);
       const byHash = await Meteor.users.findOneAsync({
@@ -135,27 +124,6 @@ describe('Auth', function () {
 
       const raw = JSON.stringify(byHash.services.resume.loginTokens);
       assert.strictEqual(raw.includes(res.authToken), false, 'raw token must not be stored');
-    });
-
-    /*
-     * Characterisation tests pinning the current, broken behaviour so the
-     * defect stays visible in a green run and fixing it trips these.
-     */
-    it('currently fails valid credentials with a ReferenceError', async function () {
-      const res = await Auth.loginWithPassword({ username: USERNAME } as any, PASSWORD);
-      assert.match(
-        String(res.error),
-        /Accounts is not defined/,
-        'if this no longer matches, the Accounts defect is fixed'
-      );
-    });
-
-    it('confirms Accounts is not reachable as a runtime global', function () {
-      // The package scope has no accounts dependency, and package exports are
-      // not true globals, so the bare reference in lib/ resolves to nothing.
-      assert.strictEqual(typeof (globalThis as any).Accounts, 'undefined');
-      // ...while a module that declares the dependency gets it fine:
-      assert.strictEqual(typeof Accounts._hashLoginToken, 'function');
     });
   });
 });
