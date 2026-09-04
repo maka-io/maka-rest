@@ -208,16 +208,30 @@ describe('Route', function () {
       });
 
       /*
-       * Characterisation, not an endorsement. `Roles` is referenced as a bare
-       * global in lib/route.ts and Package.onUse declares no roles dependency,
-       * so with alanning:roles absent every role-gated endpoint throws rather
-       * than answering 403 -- over HTTP that surfaces as a 500. This is the
-       * same defect class that `Accounts` had; fixing it means either
-       * depending on alanning:roles or resolving it defensively, so it is left
-       * as a maintainer decision. Change this test when that is decided.
+       * Characterisation, not an endorsement.
+       *
+       * `Roles` is a bare global in lib/route.ts while Package.onUse declares
+       * no roles dependency, so a role-gated endpoint dies with a
+       * ReferenceError and surfaces as a 500 rather than the intended 403.
+       *
+       * Scope of the claim: alanning:roles is NOT installed in this suite, so
+       * this shows the absent case only. That installing it app-side would not
+       * help either is inferred from Accounts, not demonstrated here --
+       * accounts-base and accounts-password *are* installed in this test app
+       * and `Accounts` was still undefined inside package scope until it was
+       * imported. Both use the same classic api.export mechanism.
+       *
+       * Fixing it takes three changes, not one: declare the dependency; call
+       * userIsInRoleAsync/getScopesForUserAsync, since the sync names are
+       * client-only in alanning:roles v4; and make _roleAccepted async so
+       * _callEndpoint can await it.
        */
-      it('throws rather than 403s when alanning:roles is absent', async function () {
-        delete (globalThis as any).Roles;
+      it('throws rather than 403s when Roles is not in scope', async function () {
+        assert.strictEqual(
+          typeof (globalThis as any).Roles,
+          'undefined',
+          'precondition: Roles is not reachable as a global'
+        );
         const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
         await assert.rejects(
           () =>

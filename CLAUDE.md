@@ -102,11 +102,18 @@ WebApp.connectHandlers
   process (i.e. across API versions).
 - **A Meteor package export is not a runtime global.** A bare identifier in `lib/` resolves against
   `globalThis`, where package exports do not appear, so it is `undefined` no matter what the
-  consuming app has added. `Accounts` was bitten by this and is now imported from
-  `meteor/accounts-base`, declared in `Package.onUse`. **`Roles` in `route.ts` still is** — with
-  `alanning:roles` absent, a role-gated endpoint throws instead of answering 403, which surfaces as
-  a 500 over HTTP. A test pins that behaviour; fixing it means either depending on `alanning:roles`
-  or resolving it defensively, so it is a maintainer decision.
+  consuming app has added. The demonstration is `Accounts`: `accounts-base` and `accounts-password`
+  are installed in the test app, and `Accounts` was still `undefined` inside package scope until it
+  was imported from `meteor/accounts-base` and declared in `Package.onUse`. Installing a classic
+  `api.export` package app-side does not put its symbol in another package's scope.
+- **`Roles` in `route.ts` is still a bare global**, so a role-gated endpoint dies with a
+  `ReferenceError` and surfaces as a 500 rather than a 403 — `roleRequired` is non-functional.
+  Fixing it takes three changes, not one: declare the dependency; call
+  `userIsInRoleAsync`/`getScopesForUserAsync`, because the sync names are **client-only** in
+  `alanning:roles` v4; and make `_roleAccepted` async so `_callEndpoint` can await it. Note the test
+  covering this runs with `alanning:roles` absent — it does not resolve in this package's catalog
+  (only 1.0.6 is offered, which Meteor rejects), so the installed-app-side case is inferred from
+  `Accounts` rather than directly tested.
 - **Accounts internals are async on Meteor 3.** `Accounts._checkPassword` no longer exists (use
   `_checkPasswordAsync`), and `_insertHashedLoginToken` returns a promise that must be awaited or
   the login token is handed out before it is persisted. `_generateStampedLoginToken` and
