@@ -1,9 +1,14 @@
 import assert from 'assert';
+import { Meteor } from 'meteor/meteor';
+import { Accounts } from 'meteor/accounts-base';
+
 import { Route } from '../lib/route';
 import Codes from '../lib/codes';
 
 declare const describe: any;
 declare const it: any;
+declare const before: any;
+declare const after: any;
 declare const afterEach: any;
 
 /**
@@ -173,90 +178,129 @@ describe('Route', function () {
     });
 
     describe('role gating', function () {
-      const realRoles = (globalThis as any).Roles;
+      // alanning:roles is a weak dependency, reached through the Package
+      // registry rather than as a scope symbol -- so that is where a stub goes.
+      const registry = () => (globalThis as any).Package;
+      const REAL = registry()['alanning:roles'];
+
       afterEach(function () {
-        // Restore true absence, not a defined-but-undefined property: the
-        // former makes a bare `Roles` reference a ReferenceError, the latter a
-        // TypeError, and the case below depends on the difference.
-        if (realRoles === undefined) {
-          delete (globalThis as any).Roles;
+        if (REAL === undefined) {
+          delete registry()['alanning:roles'];
         } else {
-          (globalThis as any).Roles = realRoles;
+          registry()['alanning:roles'] = REAL;
         }
       });
 
+      const stub = (Roles: any) => {
+        registry()['alanning:roles'] = { Roles };
+      };
+
+      const gated = (over: any = {}) => ({
+        authRequired: false,
+        roleRequired: ['admin'],
+        action: async () => Codes.success200({ ok: true }),
+        ...over,
+      });
+
+      // Also guards the await: a promise is always truthy, so without it a
+      // denied role would sail through the gate as a 200.
       it('answers 403 when the user lacks the role', async function () {
-        (globalThis as any).Roles = { userIsInRole: () => false, getScopesForUser: () => [] };
+        stub({ userIsInRoleAsync: async () => false, getScopesForUserAsync: async () => [] });
         const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
-        const res = await route._callEndpoint(ctx({ user: { _id: 'u1' } }), {
-          authRequired: false,
-          roleRequired: ['admin'],
-          action: async () => Codes.success200(),
-        });
+        const res = await route._callEndpoint(ctx({ user: { _id: 'u1' } }), gated());
         assert.strictEqual(res.statusCode, 403);
       });
 
       it('runs the action when the user holds the role', async function () {
-        (globalThis as any).Roles = { userIsInRole: () => true, getScopesForUser: () => [] };
+        stub({ userIsInRoleAsync: async () => true, getScopesForUserAsync: async () => [] });
         const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
-        const res = await route._callEndpoint(ctx({ user: { _id: 'u1' } }), {
-          authRequired: false,
-          roleRequired: ['admin'],
-          action: async () => Codes.success200({ ok: true }),
-        });
+        const res = await route._callEndpoint(ctx({ user: { _id: 'u1' } }), gated());
         assert.strictEqual(res.statusCode, 200);
       });
 
-      /*
-       * Characterisation, not an endorsement.
-       *
-       * `Roles` is a bare global in lib/route.ts while Package.onUse declares
-       * no roles dependency, so a role-gated endpoint dies with a
-       * ReferenceError and surfaces as a 500 rather than the intended 403.
-       *
-       * Scope of the claim: alanning:roles is NOT installed in this suite, so
-       * this shows the absent case only. That installing it app-side would not
-       * help either is inferred from Accounts, not demonstrated here --
-       * accounts-base and accounts-password *are* installed in this test app
-       * and `Accounts` was still undefined inside package scope until it was
-       * imported. Both use the same classic api.export mechanism.
-       *
-       * Fixing it takes three changes, not one: declare the dependency; call
-       * userIsInRoleAsync/getScopesForUserAsync, since the sync names are
-       * client-only in alanning:roles v4; and make _roleAccepted async so
-       * _callEndpoint can await it.
-       */
-      it('throws rather than 403s when Roles is not in scope', async function () {
-        assert.strictEqual(
-          typeof (globalThis as any).Roles,
-          'undefined',
-          'precondition: Roles is not reachable as a global'
-        );
+      it('skips the check entirely when there is no authenticated user', async function () {
+        delete registry()['alanning:roles'];
+        const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
+        const res = await route._callEndpoint(ctx(), gated());
+        assert.strictEqual(res.statusCode, 200);
+      });
+
+      it('explains itself when alanning:roles is not installed', async function () {
+        delete registry()['alanning:roles'];
         const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
         await assert.rejects(
-          () =>
-            route._callEndpoint(ctx({ user: { _id: 'u1' } }), {
-              authRequired: false,
-              roleRequired: ['admin'],
-              action: async () => Codes.success200(),
-            }),
-          /Roles is not defined/
+          () => route._callEndpoint(ctx({ user: { _id: 'u1' } }), gated()),
+          /roleRequired needs the alanning:roles package/
         );
       });
 
       it('requires scope as well as role when scopeRequired is set', async function () {
-        (globalThis as any).Roles = {
-          userIsInRole: () => true,
-          getScopesForUser: () => ['other'],
-        };
-        const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
-        const res = await route._callEndpoint(ctx({ user: { _id: 'u1' } }), {
-          authRequired: false,
-          roleRequired: ['admin'],
-          scopeRequired: ['billing'],
-          action: async () => Codes.success200(),
+        stub({
+          userIsInRoleAsync: async () => true,
+          getScopesForUserAsync: async () => ['other'],
         });
+        const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
+        const res = await route._callEndpoint(
+          ctx({ user: { _id: 'u1' } }),
+          gated({ scopeRequired: ['billing'] })
+        );
         assert.strictEqual(res.statusCode, 403);
+      });
+
+      it('passes when both the role and the scope are held', async function () {
+        stub({
+          userIsInRoleAsync: async () => true,
+          getScopesForUserAsync: async () => ['billing'],
+        });
+        const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
+        const res = await route._callEndpoint(
+          ctx({ user: { _id: 'u1' } }),
+          gated({ scopeRequired: ['billing'] })
+        );
+        assert.strictEqual(res.statusCode, 200);
+      });
+
+      /*
+       * Against the package itself, not a stub. The stubs above would happily
+       * keep passing if the real API were named something else -- which is
+       * exactly the trap here, since the sync userIsInRole/getScopesForUser
+       * that this code used to call are client-only in alanning:roles v4.
+       */
+      describe('against the real alanning:roles package', function () {
+        const USERNAME = 'maka-rest-roles-test';
+        const HELD = 'maka-rest-test-held';
+        const NOT_HELD = 'maka-rest-test-not-held';
+        let user: any;
+
+        before(async function () {
+          this.timeout(15000);
+          const Roles = REAL.Roles;
+          await Meteor.users.removeAsync({ username: USERNAME });
+          const userId = await Accounts.createUserAsync({
+            username: USERNAME,
+            password: 'correct-horse-battery',
+          });
+          await Roles.createRoleAsync(HELD, { unlessExists: true });
+          await Roles.createRoleAsync(NOT_HELD, { unlessExists: true });
+          await Roles.addUsersToRolesAsync(userId, [HELD]);
+          user = await Meteor.users.findOneAsync(userId);
+        });
+
+        after(async function () {
+          await Meteor.users.removeAsync({ username: USERNAME });
+        });
+
+        it('allows a user holding the role', async function () {
+          const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
+          const res = await route._callEndpoint(ctx({ user }), gated({ roleRequired: [HELD] }));
+          assert.strictEqual(res.statusCode, 200);
+        });
+
+        it('denies a user not holding the role', async function () {
+          const route: any = new Route(fakeApi(), 'thing', {}, { get: () => undefined });
+          const res = await route._callEndpoint(ctx({ user }), gated({ roleRequired: [NOT_HELD] }));
+          assert.strictEqual(res.statusCode, 403);
+        });
       });
     });
   });

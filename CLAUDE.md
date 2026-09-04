@@ -106,14 +106,15 @@ WebApp.connectHandlers
   are installed in the test app, and `Accounts` was still `undefined` inside package scope until it
   was imported from `meteor/accounts-base` and declared in `Package.onUse`. Installing a classic
   `api.export` package app-side does not put its symbol in another package's scope.
-- **`Roles` in `route.ts` is still a bare global**, so a role-gated endpoint dies with a
-  `ReferenceError` and surfaces as a 500 rather than a 403 — `roleRequired` is non-functional.
-  Fixing it takes three changes, not one: declare the dependency; call
-  `userIsInRoleAsync`/`getScopesForUserAsync`, because the sync names are **client-only** in
-  `alanning:roles` v4; and make `_roleAccepted` async so `_callEndpoint` can await it. Note the test
-  covering this runs with `alanning:roles` absent — it does not resolve in this package's catalog
-  (only 1.0.6 is offered, which Meteor rejects), so the installed-app-side case is inferred from
-  `Accounts` rather than directly tested.
+- **`roleRequired` reaches `alanning:roles` through the `Package` registry**, never as a scope
+  symbol. It is a **weak** dependency, so an app that never uses `roleRequired` need not install it;
+  `Route.resolveRoles()` reads `Package['alanning:roles'].Roles` at call time and throws a named
+  error when it is absent. `_roleAccepted` is `async` and calls
+  `userIsInRoleAsync`/`getScopesForUserAsync` — the sync `userIsInRole`/`getScopesForUser` are
+  **client-only** in v4 and simply do not exist on the server. `_callEndpoint` must keep awaiting
+  it: a promise is always truthy, so dropping that `await` turns every role denial into a pass.
+  `Package.onTest` pins `alanning:roles@4.0.0` explicitly — the bare name makes the solver trip over
+  an ancient 1.0.6 catalog entry and silently omit the package.
 - **Accounts internals are async on Meteor 3.** `Accounts._checkPassword` no longer exists (use
   `_checkPasswordAsync`), and `_insertHashedLoginToken` returns a promise that must be awaited or
   the login token is handed out before it is persisted. `_generateStampedLoginToken` and

@@ -196,7 +196,7 @@ class Route {
   private async _callEndpoint(endpointContext: EndpointContext, endpoint: EndpointOptions): Promise<StatusResponse> {
     const auth = await this._authAccepted(endpointContext, endpoint);
     if (auth.success) {
-      if (this._roleAccepted(endpointContext, endpoint)) {
+      if (await this._roleAccepted(endpointContext, endpoint)) {
         const endpointResponse = await endpoint.action(endpointContext);
         if (!endpointResponse) {
           return Codes.noContent204();
@@ -238,16 +238,37 @@ class Route {
     return { success: true, data: auth };
   }
 
-  private _roleAccepted(endpointContext: EndpointContext, endpoint:EndpointOptions): boolean {
+  /**
+   * Resolves alanning:roles at call time.
+   *
+   * It is a weak dependency, so it is only present if the consuming app added
+   * it, and a weak dependency's exports are reached through the Package
+   * registry -- the symbol is never injected into this package's scope.
+   * Referencing a bare `Roles` here is what used to make roleRequired die with
+   * a ReferenceError.
+   */
+  private static resolveRoles(): any {
+    const registry = (globalThis as any).Package;
+    return registry && registry['alanning:roles'] && registry['alanning:roles'].Roles;
+  }
+
+  private async _roleAccepted(endpointContext: EndpointContext, endpoint: EndpointOptions): Promise<boolean> {
     if (!endpoint.roleRequired || !endpointContext.user) return true;
 
-    const hasRole = Roles.userIsInRole(endpointContext.user, endpoint.roleRequired);
-    if (endpoint.scopeRequired) {
-      const hasScope = endpoint.scopeRequired.some(scope =>
-        Roles.getScopesForUser(endpointContext.user).includes(scope));
-      return hasRole && hasScope;
+    const Roles = Route.resolveRoles();
+    if (!Roles) {
+      throw new Error(
+        'maka:rest: roleRequired needs the alanning:roles package. Add it to your app with `meteor add alanning:roles`.'
+      );
     }
-    return hasRole;
+
+    // The synchronous userIsInRole/getScopesForUser are client-only in
+    // alanning:roles v4; the server only has the Async variants.
+    const hasRole = await Roles.userIsInRoleAsync(endpointContext.user, endpoint.roleRequired);
+    if (!endpoint.scopeRequired) return hasRole;
+
+    const scopes = await Roles.getScopesForUserAsync(endpointContext.user);
+    return hasRole && endpoint.scopeRequired.some((scope: string) => scopes.includes(scope));
   }
 };
 
