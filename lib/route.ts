@@ -107,6 +107,7 @@ class Route {
       if (availableMethods.includes(method)) {
         const endpoint = this.endpoints[method];
         JsonRoutes.add(method, fullPath, async (req: Request, res: Response) => {
+          const pathname = JsonRoutes.getPathname(req);
           if (this.api._config.rateLimitOptions) {
             // Rate limiting logic
             try {
@@ -127,7 +128,7 @@ class Route {
           }
 
           const endpointContext: EndpointContext = {
-            urlParams: this.extractUrlParams(req.url || '', fullPath),
+            urlParams: this.extractUrlParams(pathname, fullPath),
             queryParams: req.query,
             bodyParams: req.body,
             request: req,
@@ -150,7 +151,7 @@ class Route {
             if (this.api._config.debug) {
               console.log(`\n${method.toUpperCase()} ${fullPath}`);
               console.log('Request:', {
-                urlParams: this.extractUrlParams(req.url || '', fullPath),
+                urlParams: this.extractUrlParams(pathname, fullPath),
 
                 queryParams: req.query,
                 bodyParams: req.body,

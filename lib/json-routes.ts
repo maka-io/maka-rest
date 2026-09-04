@@ -1,6 +1,5 @@
 import { WebApp } from 'meteor/webapp';
 import { IncomingMessage, ServerResponse } from 'http';
-import { parse } from 'url';
 
 export interface RouteHandler {
   method: string;
@@ -85,9 +84,25 @@ class JsonRoutes {
     }
   }
 
+  /**
+   * Extracts the pathname from a request URL using the WHATWG URL API.
+   * `req.url` is origin-relative, so a placeholder base is required; only the
+   * pathname is read back off the result, never the host.
+   */
+  public static getPathname(req: IncomingMessage): string {
+    const rawUrl = req.url || '/';
+    try {
+      return new URL(rawUrl, 'http://localhost').pathname;
+    } catch (e) {
+      // matchRoute is called outside routeRequest's try block, so a throw here
+      // would escape as an unhandled rejection. Fall back to a best-effort path
+      // and let the request 404 normally.
+      return rawUrl.split('?')[0].split('#')[0];
+    }
+  }
+
   private matchRoute(req: IncomingMessage): RouteHandler | undefined {
-    const parsedUrl = parse(req.url || '', true);
-    const path = parsedUrl.pathname || '';
+    const path = JsonRoutes.getPathname(req);
 
     return this.routes.find(route => {
       const isMethodMatch = route.method.toUpperCase() === req.method?.toUpperCase();
