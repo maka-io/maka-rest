@@ -28,7 +28,12 @@ Package.onUse(function (api) {
   // Weak: only routes using roleRequired need it, so the consuming app
   // decides whether to install it. Reached via the Package registry at
   // call time -- see Route.resolveRoles.
-  api.use('alanning:roles', 'server', { weak: true });
+  //
+  // The version constraint is required: publishing fails without one, even
+  // for a weak dependency. 4.0.0 is the Meteor 3 line, and _roleAccepted
+  // needs userIsInRoleAsync/getScopesForUserAsync, which the 3.6.x series
+  // predates.
+  api.use('alanning:roles@4.0.0', 'server', { weak: true });
 
   // maka-rest.ts (and route.ts in turn) import these siblings with
   // relative paths -- not covered by mainModule() on its own. They must
@@ -53,7 +58,7 @@ Package.onTest(function (api) {
   api.use([
     'ecmascript',
     'typescript',
-    'meteortesting:mocha',
+    'meteortesting:mocha@3.4.0',
     'mongo',
     'webapp',
     'accounts-base',
