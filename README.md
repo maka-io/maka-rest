@@ -634,9 +634,36 @@ package](http://docs.meteor.com/#/full/accounts_passwords). You can do this with
 All Authorization has been moved to static methods on the MakaRest root object.
 
 MakaRest.auth.loginType = 'default' | null
+MakaRest.auth.requireVerifiedEmail = true | false
 MakaRest.auth.onLoggedIn((req) => {});
 MakaRest.auth.onLoggedOut((req) => {});
 MakaRest.auth.onLoginFailure((req, reason) => {});
+
+#### Requiring A Verified Email
+
+`MakaRest.auth.requireVerifiedEmail` is a global switch, off by default. When it is `true`, every
+endpoint that already has [`authRequired`](#authrequired) additionally requires the authenticated
+user to hold a verified email address:
+
+```javascript
+MakaRest.auth.requireVerifiedEmail = true;
+```
+
+- It is **static**, so one assignment covers every `MakaRest` instance and every API version in the
+  process, and it is read **per request** -- unlike `loginType`, it may be set at any point, before
+  or after your instances are constructed.
+- A user who is authenticated but unverified gets a **`403`**, not a `401`. Their token is valid, so
+  telling them to re-authenticate would be useless advice. The body is the string
+  `"Email address must be verified"`.
+- It only tightens routes that already require auth. **Public routes are unaffected.**
+- It **fails closed**: a user is accepted only if some entry in `user.emails` has `verified: true`.
+  An account with an empty `emails` array, or none at all -- a username-only or OAuth account, for
+  instance -- is refused. Check your user base before switching this on.
+- `POST /api/logout` and `POST /api/logoutAll` are **exempt**, so a session can always be
+  terminated. Without that, an unverified user could log in but never invalidate their own token.
+  `POST /api/login` is unaffected and still issues tokens.
+- There is no per-route opt-out. A route that must stay reachable to unverified users has to be
+  `authRequired: false`.
 
 #### Logging In
 

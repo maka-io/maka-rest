@@ -25,6 +25,8 @@ export interface EndpointOptions {
 
 export interface RouteOptions {
   [key: string]: any; // Define specific routes here (e.g., get, post, put, del)
+  /** Internal. Set only by the built-in logout endpoints; not a public option. */
+  _skipVerifiedEmailCheck?: boolean;
   rateLimit?: {
     points?: number;
     duration?: number;
@@ -196,6 +198,9 @@ class Route {
   private async _callEndpoint(endpointContext: EndpointContext, endpoint: EndpointOptions): Promise<StatusResponse> {
     const auth = await this._authAccepted(endpointContext, endpoint);
     if (auth.success) {
+      if (!this._verifiedEmailAccepted(endpointContext, endpoint)) {
+        return Codes.forbidden403('Email address must be verified');
+      }
       if (await this._roleAccepted(endpointContext, endpoint)) {
         const endpointResponse = await endpoint.action(endpointContext);
         if (!endpointResponse) {
@@ -236,6 +241,27 @@ class Route {
     endpointContext.userId = user._id;
 
     return { success: true, data: auth };
+  }
+
+  /**
+   * The global verified-email gate (MakaRest.auth.requireVerifiedEmail).
+   *
+   * Read here, per request, rather than at construction -- unlike loginType,
+   * which the constructor consumes and MakaRest.Settings then latches. So this
+   * flag may be set at any point in the process and needs no ordering rule.
+   *
+   * Denial is 403, not 401: a 401 tells a client to re-authenticate, which is
+   * useless advice to someone whose email is simply not verified.
+   */
+  private _verifiedEmailAccepted(endpointContext: EndpointContext, endpoint: EndpointOptions): boolean {
+    if (!MakaRest.auth.requireVerifiedEmail) return true;
+    // Public endpoints are untouched -- the gate only tightens authRequired ones.
+    if (!endpoint.authRequired) return true;
+    if (this.options._skipVerifiedEmailCheck) return true;
+
+    // Fail closed: no emails array, or an empty one, is not a verified email.
+    // That includes username-only accounts, which hold no email to verify.
+    return !!endpointContext.user?.emails?.some((e) => e.verified);
   }
 
   /**

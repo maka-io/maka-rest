@@ -71,6 +71,12 @@ class MakaRest {
     // keep whatever you use this for today
     loginType: null as LoginType,
 
+    // Global: when true, every endpoint with authRequired also requires the
+    // authenticated user to hold a verified email address, or the request is
+    // refused with 403. Read at request time, so it may be set at any point --
+    // unlike loginType, which the constructor latches.
+    requireVerifiedEmail: false as boolean,
+
     // private handler registries
     _onLoggedIn: [] as SimpleHandler[],
     _onLoggedOut: [] as SimpleHandler[],
@@ -267,10 +273,14 @@ class MakaRest {
         post: async (incomingMessage: IncomingMessage) => { return await this.login(incomingMessage) }
       });
 
-      this.addRoute('logout', { onRoot: true, authRequired: true }, {
+      // _skipVerifiedEmailCheck: a session must always be terminable. Without
+      // it, requireVerifiedEmail would strand an unverified user's token --
+      // they could log in but never log out. login needs no exemption; it is
+      // authRequired: false and never reaches the gate.
+      this.addRoute('logout', { onRoot: true, authRequired: true, _skipVerifiedEmailCheck: true }, {
         post: async (incomingMessage: IncomingMessage) => await this.logout(incomingMessage)
       });
-      this.addRoute('logoutAll', { onRoot: true, authRequired: true }, {
+      this.addRoute('logoutAll', { onRoot: true, authRequired: true, _skipVerifiedEmailCheck: true }, {
         post: async (incomingMessage: IncomingMessage) => await this.logoutAll(incomingMessage)
       });
     }

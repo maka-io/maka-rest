@@ -2,6 +2,7 @@ import assert from 'assert';
 import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 
+import MakaRest from '../lib/maka-rest';
 import { request, testPath, rootPath, authEvents } from './_fixture';
 
 declare const describe: any;
@@ -148,6 +149,123 @@ describe('HTTP', function () {
         headers: { 'X-Auth-Token': token },
       });
       assert.strictEqual(afterLogout.status, 401, 'token should no longer authenticate');
+    });
+  });
+
+  /*
+   * MakaRest.auth.requireVerifiedEmail is global and static, so it is switched
+   * on in before() and off again in after(). Otherwise the blocks above -- which
+   * expect `locked` to answer 200 for a username-only user -- would start
+   * failing. Mocha runs sibling describes in declaration order, so the pairing
+   * holds.
+   */
+  describe('verified email requirement', function () {
+    const VERIFIED = 'maka-rest-verified-http-test';
+    const UNVERIFIED = 'maka-rest-unverified-http-test';
+    const NO_EMAIL = 'maka-rest-noemail-http-test';
+    const PASSWORD = 'correct-horse-battery';
+    const ALL = [VERIFIED, UNVERIFIED, NO_EMAIL];
+    const tokens: Record<string, string> = {};
+
+    const login = async (username: string) => {
+      const body = JSON.stringify({ username, password: PASSWORD });
+      const res = await request(rootPath('login'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(Buffer.byteLength(body)),
+        },
+        body,
+      });
+      assert.strictEqual(res.status, 200, `login failed for ${username}`);
+      return res.json.authToken as string;
+    };
+
+    const locked = (username: string) =>
+      request(testPath('locked'), { headers: { 'X-Auth-Token': tokens[username] } });
+
+    before(async function () {
+      for (const u of ALL) await Meteor.users.removeAsync({ username: u });
+
+      const verifiedId = await Accounts.createUserAsync({
+        username: VERIFIED,
+        email: 'maka-rest-verified@example.com',
+        password: PASSWORD,
+      });
+      await Meteor.users.updateAsync(verifiedId, { $set: { 'emails.0.verified': true } });
+
+      await Accounts.createUserAsync({
+        username: UNVERIFIED,
+        email: 'maka-rest-unverified@example.com',
+        password: PASSWORD,
+      });
+      // No email at all: the fail-closed case.
+      await Accounts.createUserAsync({ username: NO_EMAIL, password: PASSWORD });
+
+      for (const u of ALL) tokens[u] = await login(u);
+
+      MakaRest.auth.requireVerifiedEmail = true;
+    });
+
+    after(async function () {
+      MakaRest.auth.requireVerifiedEmail = false;
+      for (const u of ALL) await Meteor.users.removeAsync({ username: u });
+    });
+
+    it('lets a verified user through', async function () {
+      const res = await locked(VERIFIED);
+      assert.strictEqual(res.status, 200);
+    });
+
+    // 403, not 401. The token is perfectly valid, so telling the client to
+    // re-authenticate would be useless advice.
+    it('answers 403 for an unverified address', async function () {
+      const res = await locked(UNVERIFIED);
+      assert.strictEqual(res.status, 403);
+      assert.strictEqual(res.json, 'Email address must be verified');
+    });
+
+    it('answers 403 for an account with no email at all', async function () {
+      const res = await locked(NO_EMAIL);
+      assert.strictEqual(res.status, 403);
+    });
+
+    it('leaves public routes alone', async function () {
+      const res = await request(testPath('echo/7'));
+      assert.strictEqual(res.status, 200);
+      assert.deepStrictEqual(res.json, { id: '7' });
+    });
+
+    it('still issues a token at login', async function () {
+      const token = await login(UNVERIFIED);
+      assert.ok(token.length > 0);
+    });
+
+    // The exemption. Without it an unverified user could log in but never log
+    // out, stranding a live token they had no way to invalidate.
+    it('still lets an unverified user log out, and invalidates the token', async function () {
+      const token = await login(UNVERIFIED);
+
+      const out = await request(rootPath('logout'), {
+        method: 'POST',
+        headers: { 'X-Auth-Token': token },
+      });
+      assert.strictEqual(out.status, 200);
+
+      const afterLogout = await request(testPath('locked'), {
+        headers: { 'X-Auth-Token': token },
+      });
+      assert.strictEqual(afterLogout.status, 401, 'token should no longer authenticate');
+    });
+
+    it('reverts to letting everyone through when the flag is off', async function () {
+      MakaRest.auth.requireVerifiedEmail = false;
+      try {
+        const res = await locked(NO_EMAIL);
+        assert.strictEqual(res.status, 200);
+      } finally {
+        MakaRest.auth.requireVerifiedEmail = true;
+      }
     });
   });
 });
